@@ -1,0 +1,60 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/ravenporter
+/cmd/ravenporter/ravenporter
+
+# Test
+*.test
+*.out
+*.cover
+coverage.html
+coverage.txt
+*.pprof
+mem_profile.out
+fuzz*.log
+dbg*.txt
+bench*.txt
+golden_results.txt
+lint.txt
+lint.json
+out.txt
+result.txt
+panics.txt
+panics.log
+pipeline_fail.log
+integ*.log
+test_out.txt
+test_output*.txt
+test_results*.txt
+timeouts.log
+tree_output.txt
+
+# Vendor
+/vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build
+/dist/
+/bin/
+/coverage/
+/go-draco/
+/.gocache/
+/testsuite/.gocache/
+/.gomodcache/
+/.golangci-cache/
+/.agent/

@@ -1,0 +1,149 @@
+version: "2"
+run:
+  concurrency: 12
+  modules-download-mode: readonly
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - copyloopvar
+    - dogsled
+    - dupl
+    - errcheck
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - mnd
+    - nakedret
+    - nolintlint
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    funlen:
+      lines: 100
+      statements: 50
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - hugeParam
+        - dupImport
+        - octalLiteral
+        - whyNoLint
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    govet:
+      enable:
+        - shadow
+      settings:
+        printf:
+          funcs:
+            - (github.com/golangci-lint/pkg/logutils.Log).Infof
+            - (github.com/golangci-lint/pkg/logutils.Log).Warnf
+            - (github.com/golangci-lint/pkg/logutils.Log).Errorf
+            - (github.com/golangci-lint/pkg/logutils.Log).Fatalf
+        shadow:
+          strict: false
+    lll:
+      line-length: 130
+    misspell:
+      locale: US
+    mnd:
+      checks:
+        - argument
+        - case
+        - condition
+        - operation
+        - return
+    revive:
+      confidence: 0
+    whitespace:
+      multi-if: true
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - dupl
+          - errcheck
+          - funlen
+          - gocyclo
+          - gosec
+          - govet
+          - lll
+        path: (.+)_test.go
+      - linters:
+          - funlen
+          - gocritic
+          - gocyclo
+          - mnd
+          - unused
+        path: main.go
+      - path: (.+)\.go$
+        text: package comment
+      - path: (.+)\.go$
+        text: struct of size
+      - path: (.+)\.go$
+        text: 'shadow: declaration of "err"'
+      - path: (.+)\.go$
+        text: composites
+      - path: (.+)\.go$
+        text: should have comment or be unexported
+      - path: (.+)\.go$
+        text: return statements should not be cuddled if block has more than two lines
+      - path: (.+)\.go$
+        text: expressions should not be cuddled with blocks
+      - path: (.+)\.go$
+        text: expressions should not be cuddled with declarations or returns
+      - path: (.+)\.go$
+        text: branch statements should not be cuddled if block has more than two lines
+      - path: (.+)\.go$
+        text: ranges should only be cuddled with assignments used in the iteration
+      - path: (.+)\.go$
+        text: only one cuddle assigment allowed before defer statement
+      - path: (.+)\.go$
+        text: defer statements should only be cuddled with expressions on same variable
+      - path: (.+)\.go$
+        text: block should not start with a whitespace
+    paths:
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(ravenporter)
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - third_party$
+      - builtin$
+      - examples$
+      - (.+)_test.go
+      - main.go
