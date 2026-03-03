@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("RIFF\xfe\xff\xff\xfcWAVEfmt \xde\x00\xde\xde")
