@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("ply\nformat ascii \nelement vertex 1\nproperty float x\nend_header\n0")

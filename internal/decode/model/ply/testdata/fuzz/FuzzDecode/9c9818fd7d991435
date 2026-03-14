@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("ply\nelement vertex -1\nend_header")
