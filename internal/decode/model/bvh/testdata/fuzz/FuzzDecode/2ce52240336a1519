@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("HIERARCHY\nJOINT 0\nCHANNELS 0 Xrotation\nMOTION\nFrames:199999ation\\nM")
