@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <up_axis>Y_UP</up_axis>
+    <unit meter="1.0" name="meter"/>
+  </asset>
+  <library_geometries>
+    <geometry id="cube-geo" name="Cube">
+      <mesh>
+        <source id="cube-positions">
+          <float_array id="cube-positions-array" count="24">
+            -1 -1 -1  1 -1 -1  1 1 -1  -1 1 -1  -1 -1 1  1 -1 1  1 1 1  -1 1 1
+          </float_array>
+        </source>
+        <vertices id="cube-vertices">
+          <input semantic="POSITION" source="#cube-positions"/>
+        </vertices>
+        <triangles count="2">
+          <input semantic="VERTEX" source="#cube-vertices" offset="0"/>
+          <p>0 1 2 0 2 3</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="Scene" name="Scene">
+      <node id="CubeNode" name="CubeNode" type="NODE">
+        <instance_geometry url="#cube-geo"/>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <library_animations>
+    <animation id="anim-translate" name="CubeTranslate">
+      <source id="input-times">
+        <float_array id="input-times-array" count="3">0.0 0.5 1.0</float_array>
+      </source>
+      <source id="output-values">
+        <float_array id="output-values-array" count="9">0 0 0  1 2 3  2 4 6</float_array>
+      </source>
+      <sampler id="sampler-translate">
+        <input semantic="INPUT" source="#input-times"/>
+        <input semantic="OUTPUT" source="#output-values"/>
+      </sampler>
+      <channel source="#sampler-translate" target="CubeNode/translate"/>
+    </animation>
+    <animation id="anim-rotate" name="CubeRotate">
+      <source id="rot-input-times">
+        <float_array id="rot-input-times-array" count="2">0.0 1.0</float_array>
+      </source>
+      <source id="rot-output-values">
+        <float_array id="rot-output-values-array" count="8">0 0 0 1  0 0.707 0 0.707</float_array>
+      </source>
+      <sampler id="sampler-rotate">
+        <input semantic="INPUT" source="#rot-input-times"/>
+        <input semantic="OUTPUT" source="#rot-output-values"/>
+      </sampler>
+      <channel source="#sampler-rotate" target="CubeNode/rotateY"/>
+    </animation>
+  </library_animations>
+</COLLADA>
