@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <up_axis>Y_UP</up_axis>
+    <unit meter="1.0" name="meter"/>
+  </asset>
+  <library_effects>
+    <effect id="red-effect">
+      <profile_COMMON>
+        <technique>
+          <lambert>
+            <diffuse><color>1.0 0.0 0.0 1.0</color></diffuse>
+            <emission><color>0.0 0.0 0.0</color></emission>
+          </lambert>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_materials>
+    <material id="red-mat" name="Red">
+      <instance_effect url="#red-effect"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="tri-geo" name="Triangle">
+      <mesh>
+        <source id="tri-positions">
+          <float_array count="9">0 0 0 1 0 0 0 1 0</float_array>
+        </source>
+        <source id="tri-normals">
+          <float_array count="3">0 0 1</float_array>
+        </source>
+        <vertices id="tri-verts">
+          <input semantic="POSITION" source="#tri-positions"/>
+        </vertices>
+        <triangles count="1" material="red-mat">
+          <input semantic="VERTEX" source="#tri-verts" offset="0"/>
+          <input semantic="NORMAL" source="#tri-normals" offset="1"/>
+          <p>0 0 1 0 2 0</p>
+        </triangles>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_visual_scenes>
+    <visual_scene id="scene" name="Scene">
+      <node id="node0" name="TriNode">
+        <instance_geometry url="#tri-geo"/>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+</COLLADA>
