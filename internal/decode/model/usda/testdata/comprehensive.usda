@@ -1,0 +1,136 @@
+#usda 1.0
+(
+    upAxis = "Z"
+    metersPerUnit = 0.01
+    defaultPrim = "World"
+)
+
+def Material "WoodMat" {
+    def Shader "WoodShader" {
+        uniform token info:id = "UsdPreviewSurface"
+        color3f inputs:diffuseColor = (0.6, 0.4, 0.2)
+        float inputs:metallic = 0.0
+        float inputs:roughness = 0.8
+        color3f inputs:emissiveColor = (0, 0, 0)
+        float inputs:clearcoat = 0.5
+        float inputs:clearcoatRoughness = 0.1
+        float inputs:ior = 1.5
+        float inputs:opacityThreshold = 0.5
+    }
+
+    def Shader "DiffuseTex" {
+        uniform token info:id = "UsdUVTexture"
+        asset inputs:file = @textures/diffuse.png@
+        token inputs:wrapS = "repeat"
+        token inputs:wrapT = "clamp"
+    }
+}
+
+def Skeleton "Skel" {
+    uniform token[] joints = ["Shoulder", "Shoulder/Elbow", "Shoulder/Elbow/Wrist"]
+    matrix4d[] bindTransforms = [
+        ((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1)),
+        ((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (1, 0, 0, 1)),
+        ((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (2, 0, 0, 1))
+    ]
+}
+
+def Xform "World" {
+    double3 xformOp:translate = (0, 0, 0)
+    double3 xformOp:scale = (1, 1, 1)
+
+    def Mesh "Triangle" {
+        point3f[] points = [(0, 0, 0), (1, 0, 0), (0, 1, 0)]
+        int[] faceVertexIndices = [0, 1, 2]
+        normal3f[] normals = [(0, 0, 1), (0, 0, 1), (0, 0, 1)]
+        texCoord2f[] primvars:st = [(0, 0), (1, 0), (0.5, 1)]
+        color3f[] primvars:displayColor = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+        float[] primvars:displayOpacity = [0.8, 0.9, 1.0]
+        rel material:binding = </WoodMat>
+        uniform bool doubleSided = true
+        rel skel:skeleton = </Skel>
+        int[] primvars:skel:jointIndices = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]
+        float[] primvars:skel:jointWeights = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
+    }
+
+    def Mesh "Quad" {
+        point3f[] points = [
+            (0, 0, 0),
+            (1, 0, 0),
+            (1, 1, 0),
+            (0, 1, 0)
+        ]
+        int[] faceVertexIndices = [0, 1, 2, 3]
+        int[] faceVertexCounts = [4]
+    }
+
+    def Camera "MainCam" {
+        float focalLength = 35
+        float horizontalAperture = 36
+        float verticalAperture = 24
+        float2 clippingRange = (0.1, 1000)
+    }
+
+    def Camera "OrthoCam" {
+        token projection = "orthographic"
+        float horizontalAperture = 10
+        float verticalAperture = 10
+        float2 clippingRange = (0.1, 100)
+    }
+
+    def DistantLight "Sun" {
+        color3f inputs:color = (1, 0.95, 0.8)
+        float inputs:intensity = 5.0
+    }
+
+    def SphereLight "Lamp" {
+        color3f inputs:color = (1, 1, 1)
+        float inputs:intensity = 100
+    }
+
+    def DiskLight "Spot" {
+        color3f inputs:color = (0.8, 0.9, 1)
+        float inputs:intensity = 200
+        float inputs:shaping:cone:angle = 30
+    }
+
+    def RectLight "Panel" {
+        color3f inputs:color = (1, 1, 0.9)
+        float inputs:intensity = 50
+    }
+
+    def Scope "Helpers" {
+    }
+
+    def Cube "Box" {
+        double size = 2
+    }
+
+    def Sphere "Ball" {
+        double radius = 0.5
+    }
+
+    def Cylinder "Pipe" {
+        double radius = 0.3
+        double height = 2
+    }
+
+    def Cone "Spike" {
+        double radius = 0.4
+        double height = 1.5
+    }
+
+    def Capsule "Pill" {
+        double radius = 0.2
+        double height = 1
+    }
+
+    def BasisCurves "Wire" {
+        point3f[] points = [(0, 0, 0), (1, 1, 0), (2, 0, 0), (3, 1, 0)]
+        int[] curveVertexCounts = [4]
+    }
+
+    def Points "Dots" {
+        point3f[] points = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)]
+    }
+}
