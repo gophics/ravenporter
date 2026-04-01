@@ -1,0 +1,25 @@
+package main
+
+const (
+	flagOut               = "out"
+	flagPreset            = "preset"
+	flagProfileFile       = "profile-file"
+	flagReportFile        = "report-file"
+	flagPretty            = "pretty"
+	flagVerbose           = "verbose"
+	flagQuiet             = "quiet"
+	flagUpAxis            = "up-axis"
+	flagScale             = "scale"
+	flagDecodeMaxVertices = "decode-max-vertices"
+	flagMaxVertices       = "max-vertices"
+	flagDecodeMaxFileSize = "decode-max-file-size"
+	flagMaxFileSize       = "max-file-size"
+	flagEmbedTextures     = "embed-textures"
+	flagCacheImagePixels  = "cache-image-pixels"
+	flagCacheMaxMedia     = "cache-max-embedded-media-bytes"
+	flagEnableStep        = "enable-step"
+	flagDisableStep       = "disable-step"
+	flagFormat            = "format"
+	flagJSON              = "json"
+	flagRecursive         = "recursive"
+)
