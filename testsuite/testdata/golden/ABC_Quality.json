@@ -1,0 +1,160 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 1,
+  "DefaultScene": -1,
+  "Scenes": null,
+  "RootNodes": [
+    0
+  ],
+  "Nodes": [
+    {
+      "Name": "AlembicMesh",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": 0,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": -1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    }
+  ],
+  "Meshes": [
+    {
+      "Name": "Cube",
+      "Primitives": [
+        {
+          "Mode": 0,
+          "MaterialIndex": 0,
+          "Data": {
+            "VertexCount": 3,
+            "Positions": [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "Indices": [
+              0,
+              1,
+              2
+            ],
+            "Normals": [
+              [
+                0.5773503,
+                0.5773503,
+                0.5773503
+              ],
+              [
+                0.5773503,
+                0.5773503,
+                0.5773503
+              ],
+              [
+                0.5773503,
+                0.5773503,
+                0.5773503
+              ]
+            ],
+            "Tangents": [],
+            "TexCoord0": [],
+            "TexCoord1": [],
+            "TexCoord2": null,
+            "TexCoord3": null,
+            "Colors0": [],
+            "Joints0": [],
+            "Joints1": [],
+            "Weights0": [],
+            "Weights1": [],
+            "SmoothGroups": null
+          },
+          "MorphTargets": null
+        }
+      ],
+      "MorphWeights": null,
+      "BoundingBox": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ]
+    }
+  ],
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "abc",
+    "SourceVersion": "0.1000",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

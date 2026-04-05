@@ -1,0 +1,43 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 1,
+  "DefaultScene": -1,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": null,
+  "Materials": null,
+  "Textures": null,
+  "Images": [
+    {
+      "Name": "bmp",
+      "Format": "bmp",
+      "Width": 4,
+      "Height": 4,
+      "Channels": 4,
+      "ColorSpace": "sRGB",
+      "MipLevels": 1,
+      "Compressed": "Qk1mAAAAAAAAADYAAAAoAAAABAAAAAQAAAABABgAAAAAADAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/AAD/",
+      "SourceFormat": "bmp",
+      "SourcePath": "",
+      "CompressionFormat": 0,
+      "Metadata": null
+    }
+  ],
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "bmp",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

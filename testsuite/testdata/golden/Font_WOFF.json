@@ -1,0 +1,49 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 0,
+  "DefaultScene": 0,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": null,
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": [
+    {
+      "Name": "TestFont",
+      "Format": "woff",
+      "Family": "TestFont",
+      "Subfamily": "",
+      "PostScript": "",
+      "Vector": {
+        "UnitsPerEm": 0,
+        "Ascender": 800,
+        "Descender": -200,
+        "LineGap": 90,
+        "GlyphCount": 0,
+        "Codepoints": null,
+        "Advances": null,
+        "Kerning": null,
+        "RawData": "AAEAAAACACAAAQAAbmFtZQAAAAAAAAAsAAAAQE9TLzIAAAAAAAAAbAAAAE4AAAABABIAAwABAAAAAQAIAABUZXN0Rm9udAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADIP84AFoAAAAAAAA="
+      },
+      "Bitmap": null,
+      "Metadata": null
+    }
+  ],
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "woff",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

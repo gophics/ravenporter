@@ -1,0 +1,693 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 1,
+  "DefaultScene": -1,
+  "Scenes": null,
+  "RootNodes": [
+    0
+  ],
+  "Nodes": [
+    {
+      "Name": "Cube",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": 0,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": -1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    }
+  ],
+  "Meshes": [
+    {
+      "Name": "Cube",
+      "Primitives": [
+        {
+          "Mode": 0,
+          "MaterialIndex": 0,
+          "Data": {
+            "VertexCount": 24,
+            "Positions": [
+              [
+                1,
+                1,
+                -1
+              ],
+              [
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                -1,
+                1
+              ],
+              [
+                1,
+                -1,
+                -1
+              ],
+              [
+                -1,
+                1,
+                -1
+              ],
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                -1,
+                -1,
+                1
+              ],
+              [
+                -1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                -1
+              ],
+              [
+                -1,
+                1,
+                -1
+              ],
+              [
+                -1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                -1,
+                -1
+              ],
+              [
+                1,
+                -1,
+                1
+              ],
+              [
+                -1,
+                -1,
+                1
+              ],
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                1,
+                1,
+                1
+              ],
+              [
+                -1,
+                1,
+                1
+              ],
+              [
+                -1,
+                -1,
+                1
+              ],
+              [
+                1,
+                -1,
+                1
+              ],
+              [
+                1,
+                1,
+                -1
+              ],
+              [
+                1,
+                -1,
+                -1
+              ],
+              [
+                -1,
+                -1,
+                -1
+              ],
+              [
+                -1,
+                1,
+                -1
+              ]
+            ],
+            "Indices": [
+              0,
+              1,
+              2,
+              0,
+              2,
+              3,
+              4,
+              5,
+              6,
+              4,
+              6,
+              7,
+              8,
+              9,
+              10,
+              8,
+              10,
+              11,
+              12,
+              13,
+              14,
+              12,
+              14,
+              15,
+              16,
+              17,
+              18,
+              16,
+              18,
+              19,
+              20,
+              21,
+              22,
+              20,
+              22,
+              23
+            ],
+            "Normals": [
+              [
+                -1,
+                -0,
+                -0
+              ],
+              [
+                -1,
+                -0,
+                -0
+              ],
+              [
+                -1,
+                -0,
+                -0
+              ],
+              [
+                -1,
+                -0,
+                -0
+              ],
+              [
+                1,
+                -0,
+                -0
+              ],
+              [
+                1,
+                -0,
+                -0
+              ],
+              [
+                1,
+                -0,
+                -0
+              ],
+              [
+                1,
+                -0,
+                -0
+              ],
+              [
+                -0,
+                -1,
+                -0
+              ],
+              [
+                -0,
+                -1,
+                -0
+              ],
+              [
+                -0,
+                -1,
+                -0
+              ],
+              [
+                -0,
+                -1,
+                -0
+              ],
+              [
+                -0,
+                1,
+                -0
+              ],
+              [
+                -0,
+                1,
+                -0
+              ],
+              [
+                -0,
+                1,
+                -0
+              ],
+              [
+                -0,
+                1,
+                -0
+              ],
+              [
+                -0,
+                -0,
+                -1
+              ],
+              [
+                -0,
+                -0,
+                -1
+              ],
+              [
+                -0,
+                -0,
+                -1
+              ],
+              [
+                -0,
+                -0,
+                -1
+              ],
+              [
+                -0,
+                -0,
+                1
+              ],
+              [
+                -0,
+                -0,
+                1
+              ],
+              [
+                -0,
+                -0,
+                1
+              ],
+              [
+                -0,
+                -0,
+                1
+              ]
+            ],
+            "Tangents": [
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                0,
+                1,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                -1,
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ],
+              [
+                0,
+                -1,
+                0,
+                1
+              ]
+            ],
+            "TexCoord0": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ],
+            "TexCoord1": null,
+            "TexCoord2": null,
+            "TexCoord3": null,
+            "Colors0": null,
+            "Joints0": null,
+            "Joints1": null,
+            "Weights0": null,
+            "Weights1": null,
+            "SmoothGroups": null
+          },
+          "MorphTargets": null
+        }
+      ],
+      "MorphWeights": null,
+      "BoundingBox": [
+        [
+          -1,
+          -1,
+          -1
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ]
+    }
+  ],
+  "Materials": [
+    {
+      "Name": "CubeMaterial",
+      "BaseColorFactor": [
+        0.8,
+        0.2,
+        0.1,
+        1
+      ],
+      "BaseColorTexture": null,
+      "MetallicFactor": 0,
+      "RoughnessFactor": 0,
+      "MetallicTexture": null,
+      "RoughnessTexture": null,
+      "NormalTexture": null,
+      "NormalScale": 0,
+      "OcclusionTexture": null,
+      "OcclusionStrength": 0,
+      "EmissiveFactor": [
+        0,
+        0,
+        0
+      ],
+      "EmissiveTexture": null,
+      "AlphaMode": 0,
+      "AlphaCutoff": 0.5,
+      "DoubleSided": false,
+      "Unlit": false,
+      "Clearcoat": null,
+      "Sheen": null,
+      "Transmission": null,
+      "Volume": null,
+      "IOR": null,
+      "Specular": null,
+      "Anisotropy": null,
+      "Iridescence": null,
+      "Dispersion": null,
+      "DiffuseTransmission": null,
+      "SpecularGlossiness": null,
+      "EmissiveStrength": null,
+      "Properties": {
+        "specular": [
+          0.5,
+          0.5,
+          0.5
+        ]
+      }
+    }
+  ],
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "obj",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 0,
+  "DefaultScene": 0,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": null,
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": [
+    {
+      "Name": "AIFF Audio",
+      "Format": "aiff",
+      "SampleRate": 44100,
+      "Layout": "stereo",
+      "BitDepth": 16,
+      "Duration": 105772947845,
+      "LoopStart": -1,
+      "LoopEnd": -1,
+      "Metadata": {
+        "Title": "",
+        "Artist": "",
+        "Album": "",
+        "Genre": "",
+        "Comment": "",
+        "Artwork": null,
+        "CuePoints": null
+      }
+    }
+  ],
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "aiff",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

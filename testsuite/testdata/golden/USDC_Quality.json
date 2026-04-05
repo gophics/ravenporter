@@ -1,0 +1,668 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 1,
+  "DefaultScene": -1,
+  "Scenes": null,
+  "RootNodes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "Nodes": [
+    {
+      "Name": "Triangle",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": 6,
+      "MeshIndex": 0,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": -1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    },
+    {
+      "Name": "Quad",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": 1,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": -1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    },
+    {
+      "Name": "MainCam",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": -1,
+      "SkinIndex": -1,
+      "CameraIndex": 0,
+      "LightIndex": -1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    },
+    {
+      "Name": "Sun",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": -1,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": 0,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    },
+    {
+      "Name": "Lamp",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": -1,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": 1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    },
+    {
+      "Name": "Spot",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "Scale": [
+          0,
+          0,
+          0
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": -1,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": 2,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    },
+    {
+      "Name": "World",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": -1,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": -1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": [
+        0
+      ],
+      "Extras": null
+    }
+  ],
+  "Meshes": [
+    {
+      "Name": "Triangle",
+      "Primitives": [
+        {
+          "Mode": 0,
+          "MaterialIndex": -1,
+          "Data": {
+            "VertexCount": 3,
+            "Positions": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ]
+            ],
+            "Indices": [
+              0,
+              1,
+              2
+            ],
+            "Normals": [
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "Tangents": [
+              [
+                1,
+                0,
+                0,
+                1
+              ],
+              [
+                1,
+                0,
+                0,
+                1
+              ],
+              [
+                1,
+                0,
+                0,
+                1
+              ]
+            ],
+            "TexCoord0": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                0.5,
+                1
+              ]
+            ],
+            "TexCoord1": null,
+            "TexCoord2": null,
+            "TexCoord3": null,
+            "Colors0": null,
+            "Joints0": null,
+            "Joints1": null,
+            "Weights0": null,
+            "Weights1": null,
+            "SmoothGroups": null
+          },
+          "MorphTargets": null
+        }
+      ],
+      "MorphWeights": null,
+      "BoundingBox": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "Name": "Quad",
+      "Primitives": [
+        {
+          "Mode": 0,
+          "MaterialIndex": -1,
+          "Data": {
+            "VertexCount": 4,
+            "Positions": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                1,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ]
+            ],
+            "Indices": [
+              0,
+              1,
+              2,
+              0,
+              2,
+              3
+            ],
+            "Normals": [
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "Tangents": null,
+            "TexCoord0": null,
+            "TexCoord1": null,
+            "TexCoord2": null,
+            "TexCoord3": null,
+            "Colors0": null,
+            "Joints0": null,
+            "Joints1": null,
+            "Weights0": null,
+            "Weights1": null,
+            "SmoothGroups": null
+          },
+          "MorphTargets": null
+        }
+      ],
+      "MorphWeights": null,
+      "BoundingBox": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ]
+    }
+  ],
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": [
+    {
+      "Name": "MainCam",
+      "Perspective": {
+        "FOV": 0.9500215,
+        "Aspect": 1.5,
+        "Near": 0.1,
+        "Far": 1000,
+        "FocalLength": 0,
+        "FocusDistance": 0,
+        "FStop": 0,
+        "SensorWidth": 0,
+        "SensorHeight": 0
+      },
+      "Orthographic": null
+    }
+  ],
+  "Lights": [
+    {
+      "Name": "Sun",
+      "Color": [
+        1,
+        0.95,
+        0.8
+      ],
+      "Temperature": 0,
+      "Intensity": 5,
+      "IESProfile": null,
+      "Directional": {},
+      "Point": null,
+      "Spot": null
+    },
+    {
+      "Name": "Lamp",
+      "Color": [
+        1,
+        1,
+        1
+      ],
+      "Temperature": 0,
+      "Intensity": 100,
+      "IESProfile": null,
+      "Directional": null,
+      "Point": {
+        "Range": 0,
+        "SourceRadius": 0,
+        "SourceLength": 0
+      },
+      "Spot": null
+    },
+    {
+      "Name": "Spot",
+      "Color": [
+        0.8,
+        0.9,
+        1
+      ],
+      "Temperature": 0,
+      "Intensity": 200,
+      "IESProfile": null,
+      "Directional": null,
+      "Point": null,
+      "Spot": {
+        "Range": 0,
+        "InnerConeAngle": 0.5235988,
+        "OuterConeAngle": 0.5235988,
+        "SourceRadius": 0
+      }
+    }
+  ],
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "usd",
+    "SourceVersion": "0.4.0",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 0,
+  "DefaultScene": 0,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": null,
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": [
+    {
+      "Name": "OTF",
+      "Format": "otf",
+      "Family": "",
+      "Subfamily": "",
+      "PostScript": "",
+      "Vector": {
+        "UnitsPerEm": 0,
+        "Ascender": 0,
+        "Descender": 0,
+        "LineGap": 0,
+        "GlyphCount": 0,
+        "Codepoints": null,
+        "Advances": null,
+        "Kerning": null,
+        "RawData": "T1RUTwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+      },
+      "Bitmap": null,
+      "Metadata": null
+    }
+  ],
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "otf",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

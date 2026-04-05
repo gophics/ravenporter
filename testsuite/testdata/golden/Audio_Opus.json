@@ -1,0 +1,50 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 0,
+  "DefaultScene": 0,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": null,
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": [
+    {
+      "Name": "Opus Audio",
+      "Format": "opus",
+      "SampleRate": 48000,
+      "Layout": "stereo",
+      "BitDepth": 16,
+      "Duration": 13500000,
+      "LoopStart": -1,
+      "LoopEnd": -1,
+      "Metadata": {
+        "Title": "",
+        "Artist": "",
+        "Album": "",
+        "Genre": "",
+        "Comment": "",
+        "Artwork": null,
+        "CuePoints": null
+      },
+      "Compressed": "T2dnUwACAAAAAAAAAAAAAAAAAAAAAAAAAAABE09wdXNIZWFkAQI4AYC7AAAAAABPZ2dTAAAAAAAAAAAAAAAAAAABAAAAAAAAAAEQT3B1c1RhZ3MAAAAAAAAAAE9nZ1MABMADAAAAAAAAAAAAAAIAAAAAAAAAAQQAAAAA",
+      "SourceCodec": "opus"
+    }
+  ],
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "opus",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

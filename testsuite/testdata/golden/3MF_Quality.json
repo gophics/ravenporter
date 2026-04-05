@@ -1,0 +1,250 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 0.001,
+  "DefaultScene": 0,
+  "Scenes": [
+    {
+      "Name": "",
+      "RootNodes": [
+        0
+      ]
+    }
+  ],
+  "RootNodes": [
+    0
+  ],
+  "Nodes": [
+    {
+      "Name": "",
+      "Transform": {
+        "Translation": [
+          0,
+          0,
+          0
+        ],
+        "Rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "Scale": [
+          1,
+          1,
+          1
+        ],
+        "Matrix": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "Visible": false,
+      "Mobility": 0,
+      "ParentIndex": -1,
+      "MeshIndex": 0,
+      "SkinIndex": -1,
+      "CameraIndex": -1,
+      "LightIndex": -1,
+      "LODGroupIndex": -1,
+      "IsJoint": false,
+      "IsCollision": false,
+      "MorphWeights": null,
+      "Children": null,
+      "Extras": null
+    }
+  ],
+  "Meshes": [
+    {
+      "Name": "3mf",
+      "Primitives": [
+        {
+          "Mode": 0,
+          "MaterialIndex": -1,
+          "Data": {
+            "VertexCount": 8,
+            "Positions": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                10,
+                0,
+                0
+              ],
+              [
+                10,
+                20,
+                0
+              ],
+              [
+                0,
+                20,
+                0
+              ],
+              [
+                0,
+                0,
+                30
+              ],
+              [
+                10,
+                0,
+                30
+              ],
+              [
+                10,
+                20,
+                30
+              ],
+              [
+                0,
+                20,
+                30
+              ]
+            ],
+            "Indices": [
+              0,
+              1,
+              5,
+              5,
+              4,
+              0,
+              1,
+              0,
+              3,
+              3,
+              0,
+              4,
+              4,
+              5,
+              6,
+              6,
+              5,
+              1,
+              6,
+              7,
+              4,
+              4,
+              7,
+              3,
+              1,
+              2,
+              6,
+              3,
+              2,
+              1,
+              2,
+              3,
+              7,
+              7,
+              6,
+              2
+            ],
+            "Normals": [
+              [
+                0,
+                0,
+                -1
+              ],
+              [
+                0,
+                0,
+                -1
+              ],
+              [
+                0,
+                0,
+                -1
+              ],
+              [
+                0,
+                0,
+                -1
+              ],
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                0,
+                1
+              ]
+            ],
+            "Tangents": null,
+            "TexCoord0": null,
+            "TexCoord1": null,
+            "TexCoord2": null,
+            "TexCoord3": null,
+            "Colors0": null,
+            "Joints0": null,
+            "Joints1": null,
+            "Weights0": null,
+            "Weights1": null,
+            "SmoothGroups": null
+          },
+          "MorphTargets": null
+        }
+      ],
+      "MorphWeights": null,
+      "BoundingBox": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          20,
+          30
+        ]
+      ]
+    }
+  ],
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "3mf",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}
