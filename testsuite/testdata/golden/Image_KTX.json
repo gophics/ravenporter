@@ -1,0 +1,43 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 1,
+  "DefaultScene": -1,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": null,
+  "Materials": null,
+  "Textures": null,
+  "Images": [
+    {
+      "Name": "ktx",
+      "Format": "ktx",
+      "Width": 128,
+      "Height": 64,
+      "Channels": 4,
+      "ColorSpace": "sRGB",
+      "MipLevels": 1,
+      "Compressed": "q0tUWCAxMbsNChoKAQIDBAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+      "SourceFormat": "ktx",
+      "SourcePath": "",
+      "CompressionFormat": 8,
+      "Metadata": null
+    }
+  ],
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "ktx",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

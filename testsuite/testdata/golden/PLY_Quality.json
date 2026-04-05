@@ -1,0 +1,188 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 1,
+  "DefaultScene": -1,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": [
+    {
+      "Name": "PLY Mesh",
+      "Primitives": [
+        {
+          "Mode": 0,
+          "MaterialIndex": -1,
+          "Data": {
+            "VertexCount": 8,
+            "Positions": [
+              [
+                0,
+                0,
+                0
+              ],
+              [
+                0,
+                0,
+                1
+              ],
+              [
+                0,
+                1,
+                1
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                1
+              ],
+              [
+                1,
+                1,
+                1
+              ],
+              [
+                1,
+                1,
+                0
+              ]
+            ],
+            "Indices": [
+              1,
+              5,
+              6,
+              1,
+              6,
+              2,
+              7,
+              6,
+              5,
+              2,
+              6,
+              7,
+              0,
+              1,
+              2,
+              0,
+              5,
+              1,
+              0,
+              2,
+              3,
+              2,
+              7,
+              3,
+              0,
+              4,
+              5,
+              3,
+              4,
+              0,
+              7,
+              5,
+              4,
+              3,
+              7,
+              4
+            ],
+            "Normals": [
+              [
+                -1,
+                0,
+                0
+              ],
+              [
+                -1,
+                0,
+                0
+              ],
+              [
+                -1,
+                0,
+                0
+              ],
+              [
+                -1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                -0
+              ],
+              [
+                1,
+                0,
+                0
+              ]
+            ],
+            "Tangents": null,
+            "TexCoord0": null,
+            "TexCoord1": null,
+            "TexCoord2": null,
+            "TexCoord3": null,
+            "Colors0": null,
+            "Joints0": null,
+            "Joints1": null,
+            "Weights0": null,
+            "Weights1": null,
+            "SmoothGroups": null
+          },
+          "MorphTargets": null
+        }
+      ],
+      "MorphWeights": null,
+      "BoundingBox": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ]
+    }
+  ],
+  "Materials": null,
+  "Textures": null,
+  "Images": null,
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "ply",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "Name": "",
+  "UpAxis": 0,
+  "Unit": 1,
+  "DefaultScene": -1,
+  "Scenes": null,
+  "RootNodes": null,
+  "Nodes": null,
+  "Meshes": null,
+  "Materials": null,
+  "Textures": null,
+  "Images": [
+    {
+      "Name": "tga",
+      "Format": "tga",
+      "Width": 2,
+      "Height": 2,
+      "Channels": 4,
+      "ColorSpace": "sRGB",
+      "MipLevels": 1,
+      "Compressed": "AAACAAAAAAAAAAAAAgACABgg/wAA/wAA/wAA/wAA",
+      "SourceFormat": "tga",
+      "SourcePath": "",
+      "CompressionFormat": 0,
+      "Metadata": null
+    }
+  ],
+  "Animations": null,
+  "Skeletons": null,
+  "Cameras": null,
+  "Lights": null,
+  "AudioClips": null,
+  "Fonts": null,
+  "LODGroups": null,
+  "CollisionMeshes": null,
+  "Metadata": {
+    "SourceFormat": "tga",
+    "SourceVersion": "",
+    "Generator": "",
+    "CreationTime": "",
+    "ExtraProperties": null
+  }
+}
