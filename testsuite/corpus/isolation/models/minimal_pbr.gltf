@@ -1,0 +1,19 @@
+{
+  "asset": {"version": "2.0"},
+  "materials": [
+    {
+      "pbrMetallicRoughness": {"baseColorFactor": [1.0, 0.0, 0.0, 1.0]},
+      "extensions": {
+        "KHR_materials_clearcoat": {"clearcoatFactor": 1.0, "clearcoatRoughnessFactor": 0.5}
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "primitives": [{"attributes": {"POSITION": 0}, "material": 0}]
+    }
+  ],
+  "nodes": [{"mesh": 0}],
+  "scenes": [{"nodes": [0]}],
+  "scene": 0
+}
