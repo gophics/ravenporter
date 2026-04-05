@@ -1,0 +1,62 @@
+{
+  "asset": {"version": "2.0"},
+  "extensionsUsed": [
+    "KHR_materials_clearcoat",
+    "KHR_materials_sheen",
+    "KHR_materials_transmission",
+    "KHR_materials_volume",
+    "KHR_materials_ior"
+  ],
+  "materials": [
+    {
+      "name": "PBR_All",
+      "extensions": {
+        "KHR_materials_clearcoat": {
+          "clearcoatFactor": 0.5,
+          "clearcoatRoughnessFactor": 0.2
+        },
+        "KHR_materials_sheen": {
+          "sheenColorFactor": [1.0, 0.5, 0.0],
+          "sheenRoughnessFactor": 0.8
+        },
+        "KHR_materials_transmission": {
+          "transmissionFactor": 0.9
+        },
+        "KHR_materials_volume": {
+          "thicknessFactor": 2.0,
+          "attenuationDistance": 5.0,
+          "attenuationColor": [0.1, 0.2, 0.3]
+        },
+        "KHR_materials_ior": {
+          "ior": 1.45
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "primitives": [
+        {
+          "attributes": {"POSITION": 0},
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "nodes": [{"mesh": 0}],
+  "scenes": [{"nodes": [0]}],
+  "scene": 0,
+  "buffers": [{"byteLength": 36}],
+  "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 36}],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 3,
+      "type": "VEC3",
+      "max": [1.0, 1.0, 1.0],
+      "min": [0.0, 0.0, 0.0]
+    }
+  ]
+}
