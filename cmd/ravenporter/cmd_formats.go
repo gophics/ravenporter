@@ -1,8 +1,9 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	"github.com/gophics/ravenporter"
 	"github.com/urfave/cli/v2"
@@ -25,7 +26,7 @@ func formatsCmd() *cli.Command {
 				dec, _ := registry.Lookup(fid)
 				entries = append(entries, entry{name: dec.FormatName(), exts: dec.Extensions()})
 			}
-			sort.Slice(entries, func(i, j int) bool { return entries[i].name < entries[j].name })
+			slices.SortFunc(entries, func(a, b entry) int { return cmp.Compare(a.name, b.name) })
 
 			w := newTabWriter()
 			fmt.Fprintln(w, "Supported import formats:") //nolint:errcheck // stdout

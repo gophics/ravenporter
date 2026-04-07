@@ -28,7 +28,7 @@ func TestCookCommandWritesCache(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, asset.Close()) }()
 	require.NotNil(t, asset.Asset)
-	require.Len(t, asset.Asset.Meshes, 1)
+	require.Len(t, asset.Meshes, 1)
 }
 
 func TestCookCommandUsesDefaultOutputPath(t *testing.T) {

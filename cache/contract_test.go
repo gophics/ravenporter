@@ -12,7 +12,7 @@ import (
 	"github.com/gophics/ravenporter"
 )
 
-const fullSceneContractHash = "842884c36ed99edc900506a16604f0a6d16a4626e6b1cfdb6c538bb727e286ba"
+const fullSceneContractHash = "5ef55275d574b15f51fe3da7e975b3e46d65371b4d7d03b9893854cd304b29ca"
 
 func TestWriteContractStable(t *testing.T) {
 	result := &ravenporter.Result{

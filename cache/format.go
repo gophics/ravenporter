@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	formatVersion  = uint16(1)
+	formatVersion  = uint16(2)
 	headerSize     = 16
 	tableEntrySize = 20
 )

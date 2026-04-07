@@ -1,8 +1,9 @@
 package core
 
 import (
+	"cmp"
 	"math"
-	"sort"
+	"slices"
 	"sync"
 
 	"github.com/gophics/ravenporter/ir"
@@ -69,10 +70,8 @@ func stepPriority(flag PPFlag) int {
 }
 
 func sortSteps(steps []Step) {
-	sort.SliceStable(steps, func(i, j int) bool {
-		oi := stepPriority(steps[i].Flag())
-		oj := stepPriority(steps[j].Flag())
-		return oi < oj
+	slices.SortStableFunc(steps, func(a, b Step) int {
+		return cmp.Compare(stepPriority(a.Flag()), stepPriority(b.Flag()))
 	})
 }
 

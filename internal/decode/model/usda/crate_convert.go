@@ -2,7 +2,7 @@ package usda
 
 import (
 	"math"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/gophics/ravenporter/internal/decutil"
@@ -120,12 +120,12 @@ func decodeCrateToScene(data []byte) (*ir.Asset, error) {
 
 	asset.RootNodes = asset.RootNodes[:0]
 
-	// Collect and sort paths to ensure deterministic scene graph hierarchy construction
+	// Deterministic parent wiring order.
 	var sortedPaths []int
 	for p := range pathToNode {
 		sortedPaths = append(sortedPaths, int(p))
 	}
-	sort.Ints(sortedPaths)
+	slices.Sort(sortedPaths)
 
 	for _, p := range sortedPaths {
 		if p < math.MinInt32 || p > math.MaxInt32 {

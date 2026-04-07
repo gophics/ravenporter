@@ -13,12 +13,11 @@ const triangleVertexStride = 3
 // After Import returns, the Asset is fully self-contained on the GC heap.
 // All mmap file mappings are released during decode; no OS resources are held.
 type Asset struct {
-	Name         string
-	UpAxis       Axis
-	Unit         float64
-	DefaultScene int
-	Scenes       []*Scene
-	// RootNodes mirrors the primary scene roots for compatibility with older code paths.
+	Name            string
+	UpAxis          Axis
+	Unit            float64
+	DefaultScene    int
+	Scenes          []*Scene
 	RootNodes       []int
 	Nodes           []Node
 	Meshes          []*Mesh
@@ -56,7 +55,7 @@ func NewAssetWithScene(format FormatID, name string) (*Asset, *Scene) {
 	return asset, scene
 }
 
-// Close is a no-op provided for forward compatibility.
+// Close is a no-op; ir.Asset holds no resources.
 func (a *Asset) Close() error { return nil }
 
 // AssetMetadata holds provenance and source information.
@@ -85,7 +84,7 @@ func (a *Asset) PrimaryScene() *Scene {
 	return nil
 }
 
-// PrimaryRootNodes returns the current primary scene roots, or the compatibility root list.
+// PrimaryRootNodes returns the root node indices from the primary scene, or Asset.RootNodes.
 func (a *Asset) PrimaryRootNodes() []int {
 	if a == nil {
 		return nil
@@ -174,6 +173,123 @@ func (a *Asset) FindNode(name string) int {
 	return NoIndex
 }
 
+// FindMesh returns the index of the first mesh with the given name, or NoIndex.
+func (a *Asset) FindMesh(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, m := range a.Meshes {
+		if m != nil && m.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindMaterial returns the index of the first material with the given name, or NoIndex.
+func (a *Asset) FindMaterial(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, m := range a.Materials {
+		if m != nil && m.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindAnimation returns the index of the first animation with the given name, or NoIndex.
+func (a *Asset) FindAnimation(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, anim := range a.Animations {
+		if anim != nil && anim.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindImage returns the index of the first image with the given name, or NoIndex.
+func (a *Asset) FindImage(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, img := range a.Images {
+		if img != nil && img.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindCamera returns the index of the first camera with the given name, or NoIndex.
+func (a *Asset) FindCamera(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, cam := range a.Cameras {
+		if cam != nil && cam.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindLight returns the index of the first light with the given name, or NoIndex.
+func (a *Asset) FindLight(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, l := range a.Lights {
+		if l != nil && l.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindSkeleton returns the index of the first skeleton with the given name, or NoIndex.
+func (a *Asset) FindSkeleton(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, sk := range a.Skeletons {
+		if sk != nil && sk.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindAudioClip returns the index of the first audio clip with the given name, or NoIndex.
+func (a *Asset) FindAudioClip(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, clip := range a.AudioClips {
+		if clip != nil && clip.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
+// FindFont returns the index of the first font with the given name, or NoIndex.
+func (a *Asset) FindFont(name string) int {
+	if a == nil {
+		return NoIndex
+	}
+	for i, f := range a.Fonts {
+		if f != nil && f.Name == name {
+			return i
+		}
+	}
+	return NoIndex
+}
+
 // TotalVertexCount returns the sum of vertex counts across all mesh primitives.
 func (a *Asset) TotalVertexCount() int {
 	if a == nil {
@@ -218,9 +334,6 @@ func (a *Asset) TotalTriangleCount() int {
 
 // SceneBoundingBox computes the world-space axis-aligned bounds for one scene.
 func (a *Asset) SceneBoundingBox(sceneIndex int) (lo, hi [3]float32) {
-	lo = [3]float32{math.MaxFloat32, math.MaxFloat32, math.MaxFloat32}
-	hi = [3]float32{-math.MaxFloat32, -math.MaxFloat32, -math.MaxFloat32}
-
 	if a == nil {
 		return [3]float32{}, [3]float32{}
 	}
@@ -230,6 +343,9 @@ func (a *Asset) SceneBoundingBox(sceneIndex int) (lo, hi [3]float32) {
 	if len(a.Scenes) == 0 && len(a.RootNodes) == 0 {
 		return [3]float32{}, [3]float32{}
 	}
+
+	lo = [3]float32{math.MaxFloat32, math.MaxFloat32, math.MaxFloat32}
+	hi = [3]float32{-math.MaxFloat32, -math.MaxFloat32, -math.MaxFloat32}
 
 	found := false
 	a.WalkNodes(sceneIndex, func(idx int, node *Node) bool {

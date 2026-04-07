@@ -86,8 +86,12 @@ func (c *AudioClip) DecodeSamples() ([]float32, error) {
 	if c.samples != nil {
 		return c.samples, nil
 	}
-	if _, err := c.CompressedBytes(); err != nil {
+	compressed, err := c.CompressedBytes()
+	if err != nil {
 		return nil, err
+	}
+	if len(compressed) == 0 && c.SampleDecode == nil {
+		return nil, nil
 	}
 	if c.SampleDecode == nil {
 		return nil, errSampleDecodeNotSupported

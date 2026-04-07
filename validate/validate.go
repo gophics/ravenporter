@@ -194,6 +194,7 @@ func checkNodeRefBounds(r *Result, a *ir.Asset) {
 	meshLen := len(a.Meshes)
 	cameraLen := len(a.Cameras)
 	skeletonLen := len(a.Skeletons)
+	lightLen := len(a.Lights)
 	lodLen := len(a.LODGroups)
 
 	for i := range a.Nodes {
@@ -206,6 +207,9 @@ func checkNodeRefBounds(r *Result, a *ir.Asset) {
 		}
 		if node.SkinIndex >= 0 && node.SkinIndex >= skeletonLen {
 			r.addError(CodeNodeRefBounds, fmt.Sprintf("node[%d] skin index %d out of range [0,%d)", i, node.SkinIndex, skeletonLen))
+		}
+		if node.LightIndex >= 0 && node.LightIndex >= lightLen {
+			r.addError(CodeNodeRefBounds, fmt.Sprintf("node[%d] light index %d out of range [0,%d)", i, node.LightIndex, lightLen))
 		}
 		if node.LODGroupIndex >= 0 && node.LODGroupIndex >= lodLen {
 			r.addError(CodeNodeRefBounds, fmt.Sprintf("node[%d] LODGroup index %d out of range [0,%d)", i, node.LODGroupIndex, lodLen))

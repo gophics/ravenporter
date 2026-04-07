@@ -20,7 +20,7 @@ type DegenerateMode = core.DegenerateMode
 type ComponentFlag = core.ComponentFlag
 type Registry = core.Registry
 
-// Re-export constants for full backward compatibility.
+// Public API re-exports from internal/process/core.
 const (
 	DegenerateModeRemove  = core.DegenerateModeRemove
 	DegenerateModeConvert = core.DegenerateModeConvert

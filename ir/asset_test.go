@@ -70,3 +70,83 @@ func TestAssetWorldMatrixStopsOnSelfParent(t *testing.T) {
 		t.Fatalf("world matrix = %v, want %v", got, want)
 	}
 }
+
+func TestFindMethods(t *testing.T) {
+	asset := &Asset{
+		Nodes:      []Node{{Name: "Root"}, {Name: "Child"}, {Name: ""}},
+		Meshes:     []*Mesh{nil, {Name: "Cube"}, {Name: "Sphere"}},
+		Materials:  []*Material{{Name: "Wood"}, nil},
+		Animations: []*Animation{{Name: "Walk"}, {Name: "Run"}},
+		Images:     []*ImageAsset{{Name: "albedo.png"}},
+		Cameras:    []*Camera{{Name: "Main"}},
+		Lights:     []*Light{{Name: "Sun"}},
+		Skeletons:  []*Skeleton{{Name: "Armature"}},
+		AudioClips: []*AudioClip{{Name: "Footstep"}},
+		Fonts:      []*Font{{Name: "Roboto"}},
+	}
+
+	tests := []struct {
+		name   string
+		lookup func(string) int
+		query  string
+		want   int
+	}{
+		{"FindNode found", asset.FindNode, "Child", 1},
+		{"FindNode miss", asset.FindNode, "None", NoIndex},
+		{"FindMesh found", asset.FindMesh, "Sphere", 2},
+		{"FindMesh nil element", asset.FindMesh, "nil", NoIndex},
+		{"FindMesh miss", asset.FindMesh, "None", NoIndex},
+		{"FindMaterial found", asset.FindMaterial, "Wood", 0},
+		{"FindMaterial miss", asset.FindMaterial, "None", NoIndex},
+		{"FindAnimation found", asset.FindAnimation, "Run", 1},
+		{"FindAnimation miss", asset.FindAnimation, "None", NoIndex},
+		{"FindImage found", asset.FindImage, "albedo.png", 0},
+		{"FindImage miss", asset.FindImage, "None", NoIndex},
+		{"FindCamera found", asset.FindCamera, "Main", 0},
+		{"FindCamera miss", asset.FindCamera, "None", NoIndex},
+		{"FindLight found", asset.FindLight, "Sun", 0},
+		{"FindLight miss", asset.FindLight, "None", NoIndex},
+		{"FindSkeleton found", asset.FindSkeleton, "Armature", 0},
+		{"FindSkeleton miss", asset.FindSkeleton, "None", NoIndex},
+		{"FindAudioClip found", asset.FindAudioClip, "Footstep", 0},
+		{"FindAudioClip miss", asset.FindAudioClip, "None", NoIndex},
+		{"FindFont found", asset.FindFont, "Roboto", 0},
+		{"FindFont miss", asset.FindFont, "None", NoIndex},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.lookup(tt.query); got != tt.want {
+				t.Fatalf("got %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFindMethodsNilAsset(t *testing.T) {
+	var asset *Asset
+
+	finders := []struct {
+		name   string
+		lookup func(string) int
+	}{
+		{"FindNode", asset.FindNode},
+		{"FindMesh", asset.FindMesh},
+		{"FindMaterial", asset.FindMaterial},
+		{"FindAnimation", asset.FindAnimation},
+		{"FindImage", asset.FindImage},
+		{"FindCamera", asset.FindCamera},
+		{"FindLight", asset.FindLight},
+		{"FindSkeleton", asset.FindSkeleton},
+		{"FindAudioClip", asset.FindAudioClip},
+		{"FindFont", asset.FindFont},
+	}
+
+	for _, f := range finders {
+		t.Run(f.name, func(t *testing.T) {
+			if got := f.lookup("any"); got != NoIndex {
+				t.Fatalf("got %d on nil asset, want NoIndex", got)
+			}
+		})
+	}
+}
