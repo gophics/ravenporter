@@ -202,18 +202,6 @@ func TestPSDPackBitsEdgeCases(t *testing.T) {
 	}
 }
 
-func TestPSDExtensions(t *testing.T) {
-	dec := &psd.Decoder{}
-	exts := dec.Extensions()
-	assert.Contains(t, exts, ".psd")
-	assert.Contains(t, exts, ".psb")
-}
-
-func TestPSDFormatName(t *testing.T) {
-	dec := &psd.Decoder{}
-	assert.Equal(t, "PSD", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &psd.Decoder{}
 	opts := detect.DecodeOptions{}

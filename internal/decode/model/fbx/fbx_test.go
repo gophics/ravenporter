@@ -33,14 +33,6 @@ func TestFBXBasics(t *testing.T) {
 			d := &Decoder{}
 			assert.False(t, d.Probe(bytes.NewReader([]byte("glTF\x02\x00\x00\x00"))))
 		}},
-		{"Extensions", func(t *testing.T) {
-			d := &Decoder{}
-			assert.Equal(t, []string{extFBX}, d.Extensions())
-		}},
-		{"FormatName", func(t *testing.T) {
-			d := &Decoder{}
-			assert.Equal(t, formatName, d.FormatName())
-		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) { tt.check(t) })

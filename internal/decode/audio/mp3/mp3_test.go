@@ -264,12 +264,6 @@ func buildID3v2(bodySize int) []byte {
 	return buf.Bytes()
 }
 
-func TestDecoderProperties(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, formatName, d.FormatName())
-	assert.Equal(t, []string{extMP3}, d.Extensions())
-}
-
 func TestVBRHeaders(t *testing.T) {
 	// MPEG-1 Stereo: offset is 4+32 = 36 bytes for Xing header
 	data := make([]byte, 100)

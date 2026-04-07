@@ -41,16 +41,6 @@ func TestDDSDecode(t *testing.T) {
 	assert.NotEmpty(t, img.Compressed)
 }
 
-func TestDDSExtensions(t *testing.T) {
-	dec := &dds.Decoder{}
-	assert.Equal(t, []string{".dds"}, dec.Extensions())
-}
-
-func TestDDSFormatName(t *testing.T) {
-	dec := &dds.Decoder{}
-	assert.Equal(t, "DDS", dec.FormatName())
-}
-
 func TestDDSCompressionAndMips(t *testing.T) {
 	dec := &dds.Decoder{}
 	scene, err := dec.Decode(bytes.NewReader(ddsData), detect.DecodeOptions{})

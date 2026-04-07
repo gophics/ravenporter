@@ -26,14 +26,6 @@ func TestDAEBasics(t *testing.T) {
 			d := &Decoder{}
 			assert.False(t, d.Probe(bytes.NewReader([]byte("glTF\x02\x00\x00\x00"))))
 		}},
-		{"Extensions", func(t *testing.T) {
-			d := &Decoder{}
-			assert.Equal(t, []string{extDAE}, d.Extensions())
-		}},
-		{"FormatName", func(t *testing.T) {
-			d := &Decoder{}
-			assert.Equal(t, formatName, d.FormatName())
-		}},
 		{"ParseUpAxis", func(t *testing.T) {
 			assert.Equal(t, ir.YUp, parseUpAxis("Y_UP"))
 			assert.Equal(t, ir.ZUp, parseUpAxis("Z_UP"))

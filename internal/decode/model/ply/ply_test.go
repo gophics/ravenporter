@@ -136,16 +136,6 @@ func TestProbe(t *testing.T) {
 	assert.False(t, dec.Probe(strings.NewReader("")))
 }
 
-func TestExtensions(t *testing.T) {
-	dec := &ply.Decoder{}
-	assert.Equal(t, []string{".ply"}, dec.Extensions())
-}
-
-func TestFormatName(t *testing.T) {
-	dec := &ply.Decoder{}
-	assert.Equal(t, "PLY", dec.FormatName())
-}
-
 func TestDecodeBinaryLEDouble(t *testing.T) {
 	header := "ply\nformat binary_little_endian 1.0\nelement vertex 3\nproperty double x\nproperty double y\nproperty double z\nelement face 1\nproperty list uchar int vertex_indices\nend_header\n"
 

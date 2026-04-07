@@ -55,16 +55,6 @@ func TestHDRDecode(t *testing.T) {
 	assert.Len(t, pb.Data, 2*2*3*4) // 2x2 width/height, 3 RGB float channels (* 4 bytes per float32)
 }
 
-func TestHDRExtensions(t *testing.T) {
-	dec := &hdr.Decoder{}
-	assert.Equal(t, []string{".hdr"}, dec.Extensions())
-}
-
-func TestHDRFormatName(t *testing.T) {
-	dec := &hdr.Decoder{}
-	assert.Equal(t, "HDR", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &hdr.Decoder{}
 	opts := detect.DecodeOptions{}

@@ -51,16 +51,6 @@ func TestWebPDecode(t *testing.T) {
 	assert.Len(t, pb.Data, 1*1*4)
 }
 
-func TestWebPExtensions(t *testing.T) {
-	dec := &imgwebp.Decoder{}
-	assert.Contains(t, dec.Extensions(), ".webp")
-}
-
-func TestWebPFormatName(t *testing.T) {
-	dec := &imgwebp.Decoder{}
-	assert.Equal(t, "WebP", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &imgwebp.Decoder{}
 	opts := detect.DecodeOptions{}

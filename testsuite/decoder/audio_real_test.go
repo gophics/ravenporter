@@ -19,15 +19,28 @@ func TestDecodeAIFFRealFile(t *testing.T) {
 	scene, err := (&aiffdec.Decoder{}).Decode(bytes.NewReader(sourceData(t, "audio", "aiff_8bit.aif")), detect.DecodeOptions{})
 	require.NoError(t, err)
 	require.Len(t, scene.AudioClips, 1)
-	assert.Equal(t, ir.AudioAIFF, scene.AudioClips[0].Format)
-	assert.Greater(t, scene.AudioClips[0].SampleRate, 0)
+	clip := scene.AudioClips[0]
+	assert.Equal(t, ir.AudioAIFF, clip.Format)
+	assert.Equal(t, 44100, clip.SampleRate)
+	assert.Equal(t, ir.LayoutStereo, clip.Layout)
+	assert.Equal(t, ir.BitDepth16, clip.BitDepth)
+	samples, sampleErr := clip.DecodeSamples()
+	require.NoError(t, sampleErr)
+	assert.NotEmpty(t, samples)
 }
 
 func TestDecodeMP3RealFile(t *testing.T) {
 	scene, err := (&mp3dec.Decoder{}).Decode(bytes.NewReader(sourceData(t, "audio", "outFoxing.mp3")), detect.DecodeOptions{})
 	require.NoError(t, err)
 	require.Len(t, scene.AudioClips, 1)
-	assert.Equal(t, ir.AudioMP3, scene.AudioClips[0].Format)
+	clip := scene.AudioClips[0]
+	assert.Equal(t, ir.AudioMP3, clip.Format)
+	assert.Equal(t, 44100, clip.SampleRate)
+	assert.Equal(t, ir.LayoutMono, clip.Layout)
+	assert.Equal(t, ir.BitDepth16, clip.BitDepth)
+	samples, sampleErr := clip.DecodeSamples()
+	require.NoError(t, sampleErr)
+	assert.NotEmpty(t, samples)
 }
 
 func TestDecodeOGGRealFile(t *testing.T) {
@@ -36,7 +49,9 @@ func TestDecodeOGGRealFile(t *testing.T) {
 	require.Len(t, scene.AudioClips, 1)
 	clip := scene.AudioClips[0]
 	assert.Equal(t, ir.AudioOGG, clip.Format)
-	assert.Greater(t, clip.SampleRate, 0)
+	assert.Equal(t, 44100, clip.SampleRate)
+	assert.Equal(t, ir.LayoutStereo, clip.Layout)
+	assert.Equal(t, ir.BitDepth16, clip.BitDepth)
 	samples, sampleErr := clip.DecodeSamples()
 	require.NoError(t, sampleErr)
 	assert.NotEmpty(t, samples)

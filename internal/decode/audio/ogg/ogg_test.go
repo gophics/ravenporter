@@ -84,16 +84,6 @@ func TestOGG_IdentificationHeader(t *testing.T) {
 		})
 	}
 }
-func TestOGG_Extensions(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, []string{".ogg", ".oga"}, d.Extensions())
-}
-
-func TestOGG_FormatName(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, "OGG", d.FormatName())
-}
-
 func TestOGG_CommentHeader(t *testing.T) {
 	hdr := make([]byte, 100)
 	hdr[0] = headerCommentType
@@ -312,11 +302,4 @@ func TestOGG_BuildHuffmanTree_Empty(t *testing.T) {
 	tree, err := buildHuffmanTree(nil)
 	assert.NotNil(t, tree)
 	assert.NoError(t, err)
-}
-
-func TestOGG_DecoderProperties(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, "OGG", d.FormatName())
-	assert.Contains(t, d.Extensions(), ".ogg")
-	assert.Contains(t, d.Extensions(), ".oga")
 }

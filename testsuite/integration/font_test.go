@@ -24,15 +24,16 @@ func TestIntegration_Font(t *testing.T) {
 		verifyFn     func(t *testing.T, f *ir.Font)
 	}{
 		{"Roboto", corpus.FontRoboto, ir.FontTTF, ir.FormatTTF, func(t *testing.T, f *ir.Font) {
+			assert.Equal(t, "Roboto", f.Name)
 			assert.Equal(t, "Roboto", f.Family)
-			assert.NotEmpty(t, f.Subfamily)
-			assert.NotEmpty(t, f.PostScript, "PostScript name must be parsed")
+			assert.Equal(t, "Regular", f.Subfamily)
+			assert.Equal(t, "Roboto-Regular", f.PostScript)
 			require.NotNil(t, f.Vector)
-			assert.True(t, f.Vector.GlyphCount > 0, "must have glyphs")
-			assert.True(t, f.Vector.UnitsPerEm > 0, "units per em must be set")
-			assert.NotZero(t, f.Vector.Ascender, "ascender must be set")
-			assert.NotZero(t, f.Vector.Descender, "descender must be set")
-			assert.NotZero(t, f.Vector.LineGap, "line gap must be set from OS/2")
+			assert.Equal(t, 1326, f.Vector.GlyphCount)
+			assert.Equal(t, 2048, f.Vector.UnitsPerEm)
+			assert.Equal(t, 1536, f.Vector.Ascender)
+			assert.Equal(t, -512, f.Vector.Descender)
+			assert.Equal(t, 102, f.Vector.LineGap)
 			assert.True(t, len(f.Vector.RawData) > 0, "raw font bytes must be retained")
 			assert.True(t, len(f.Metadata) > 0, "metadata (copyright/trademark) must be parsed")
 			assert.True(t, len(f.Vector.Codepoints) > 0, "codepoints must be populated")
@@ -55,24 +56,46 @@ func TestIntegration_Font(t *testing.T) {
 			t.Logf("OpenSans: codepoints=%d advances=%d kerning=%d", len(f.Vector.Codepoints), len(f.Vector.Advances), len(f.Vector.Kerning))
 		}},
 		{"OTF_Minimal", corpus.FontOTFMinimal, ir.FontOTF, ir.FormatOTF, func(t *testing.T, f *ir.Font) {
+			assert.Equal(t, "OTF", f.Name)
+			assert.Empty(t, f.Family)
+			assert.Empty(t, f.Subfamily)
+			assert.Empty(t, f.PostScript)
 			require.NotNil(t, f.Vector)
+			assert.Equal(t, 0, f.Vector.UnitsPerEm)
+			assert.Equal(t, 0, f.Vector.GlyphCount)
+			assert.Zero(t, f.Vector.Ascender)
+			assert.Zero(t, f.Vector.Descender)
+			assert.Zero(t, f.Vector.LineGap)
 			assert.True(t, len(f.Vector.RawData) > 0, "raw font bytes must be retained")
-			// Gap: OTF minimal font does not populate UPM/GlyphCount/Ascender/Descender.
-			t.Logf("OTF_Minimal: upm=%d glyphs=%d asc=%d desc=%d", f.Vector.UnitsPerEm, f.Vector.GlyphCount, f.Vector.Ascender, f.Vector.Descender)
+			assert.Empty(t, f.Metadata)
 		}},
 		{"WOFF_Minimal", corpus.FontWOFFMinimal, ir.FontWOFF, ir.FormatWOFF, func(t *testing.T, f *ir.Font) {
+			assert.Equal(t, "TestFont", f.Name)
+			assert.Equal(t, "TestFont", f.Family)
+			assert.Empty(t, f.Subfamily)
+			assert.Empty(t, f.PostScript)
 			require.NotNil(t, f.Vector)
+			assert.Equal(t, 0, f.Vector.UnitsPerEm)
+			assert.Equal(t, 0, f.Vector.GlyphCount)
+			assert.Equal(t, 800, f.Vector.Ascender)
+			assert.Equal(t, -200, f.Vector.Descender)
+			assert.Equal(t, 90, f.Vector.LineGap)
 			assert.True(t, len(f.Vector.RawData) > 0, "raw font bytes must be retained")
-			assert.NotZero(t, f.Vector.Ascender, "ascender must be parsed")
-			// Gap: WOFF minimal font does not populate UPM/GlyphCount.
-			t.Logf("WOFF_Minimal: upm=%d glyphs=%d", f.Vector.UnitsPerEm, f.Vector.GlyphCount)
+			assert.Empty(t, f.Metadata)
 		}},
 		{"WOFF2_Minimal", corpus.FontWOFF2Minimal, ir.FontWOFF2, ir.FormatWOFF2, func(t *testing.T, f *ir.Font) {
+			assert.Equal(t, "TestFont", f.Name)
+			assert.Equal(t, "TestFont", f.Family)
+			assert.Empty(t, f.Subfamily)
+			assert.Empty(t, f.PostScript)
 			require.NotNil(t, f.Vector)
+			assert.Equal(t, 0, f.Vector.UnitsPerEm)
+			assert.Equal(t, 0, f.Vector.GlyphCount)
+			assert.Equal(t, 800, f.Vector.Ascender)
+			assert.Equal(t, -200, f.Vector.Descender)
+			assert.Equal(t, 90, f.Vector.LineGap)
 			assert.True(t, len(f.Vector.RawData) > 0, "raw font bytes must be retained")
-			assert.NotZero(t, f.Vector.Ascender, "ascender must be parsed")
-			// Gap: WOFF2 minimal font does not populate UPM/GlyphCount.
-			t.Logf("WOFF2_Minimal: upm=%d glyphs=%d", f.Vector.UnitsPerEm, f.Vector.GlyphCount)
+			assert.Empty(t, f.Metadata)
 		}},
 	}
 

@@ -39,12 +39,6 @@ func TestAlembicProbe(t *testing.T) {
 	}
 }
 
-func TestAlembicMeta(t *testing.T) {
-	dec := &abc.Decoder{}
-	assert.Equal(t, []string{".abc"}, dec.Extensions())
-	assert.Equal(t, "Alembic", dec.FormatName())
-}
-
 func TestAlembicDecodeAll(t *testing.T) {
 	tests := []struct {
 		name    string

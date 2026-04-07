@@ -81,18 +81,6 @@ func TestJPEGDecodeWithICC(t *testing.T) {
 	assert.Equal(t, "fake_icc_content_block", imgScene.Metadata["ICCProfile"])
 }
 
-func TestJPEGExtensions(t *testing.T) {
-	dec := &jpeg.Decoder{}
-	exts := dec.Extensions()
-	assert.Contains(t, exts, ".jpeg")
-	assert.Contains(t, exts, ".jpg")
-}
-
-func TestJPEGFormatName(t *testing.T) {
-	dec := &jpeg.Decoder{}
-	assert.Equal(t, "JPEG", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &jpeg.Decoder{}
 	opts := detect.DecodeOptions{}

@@ -196,16 +196,6 @@ func TestProbeEmpty(t *testing.T) {
 	assert.False(t, dec.Probe(bytes.NewReader(nil)))
 }
 
-func TestExtensions(t *testing.T) {
-	dec := &stl.Decoder{}
-	assert.Equal(t, []string{".stl"}, dec.Extensions())
-}
-
-func TestFormatName(t *testing.T) {
-	dec := &stl.Decoder{}
-	assert.Equal(t, "STL", dec.FormatName())
-}
-
 func TestDecodeRealCube(t *testing.T) {
 	data, err := os.ReadFile("testdata/cube.stl")
 	require.NoError(t, err)

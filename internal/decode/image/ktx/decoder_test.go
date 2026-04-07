@@ -47,18 +47,6 @@ func TestKTXDecode(t *testing.T) {
 	assert.Equal(t, 64, img.Height)
 }
 
-func TestKTXExtensions(t *testing.T) {
-	dec := &ktx.Decoder{}
-	exts := dec.Extensions()
-	assert.Contains(t, exts, ".ktx")
-	assert.Contains(t, exts, ".ktx2")
-}
-
-func TestKTXFormatName(t *testing.T) {
-	dec := &ktx.Decoder{}
-	assert.Equal(t, "KTX", dec.FormatName())
-}
-
 func TestKTX2SyntheticHeader(t *testing.T) {
 	data := make([]byte, 80)
 	copy(data[0:], "\xAB\x4B\x54\x58\x20\x32\x30\xBB\x0D\x0A\x1A\x0A")

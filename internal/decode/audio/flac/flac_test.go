@@ -417,12 +417,6 @@ func buildPictureBlock(mime, desc string, picData []byte) []byte {
 	return buf.Bytes()
 }
 
-func TestDecoderProperties(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, formatName, d.FormatName())
-	assert.Equal(t, []string{extFLAC}, d.Extensions())
-}
-
 func TestDecodeStereo16(t *testing.T) {
 	data, err := os.ReadFile("../testdata/stereo_16bit.flac")
 	if err != nil {

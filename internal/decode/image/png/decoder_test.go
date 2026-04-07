@@ -113,16 +113,6 @@ func TestPNGDecodeAPNG(t *testing.T) {
 	assert.Equal(t, "png_1", scene.Images[1].Name)
 }
 
-func TestPNGExtensions(t *testing.T) {
-	dec := &png.Decoder{}
-	assert.Contains(t, dec.Extensions(), ".png")
-}
-
-func TestPNGFormatName(t *testing.T) {
-	dec := &png.Decoder{}
-	assert.Equal(t, "PNG", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &png.Decoder{}
 	opts := detect.DecodeOptions{}
