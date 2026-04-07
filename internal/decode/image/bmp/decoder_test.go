@@ -109,16 +109,6 @@ func TestDecoder_DecodeRLE4(t *testing.T) {
 	assert.Len(t, pb.Data, 16)
 }
 
-func TestDecoder_Extensions(t *testing.T) {
-	dec := &bmp.Decoder{}
-	assert.Equal(t, []string{".bmp"}, dec.Extensions())
-}
-
-func TestDecoder_Name(t *testing.T) {
-	dec := &bmp.Decoder{}
-	assert.Equal(t, "BMP", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &bmp.Decoder{}
 	opts := detect.DecodeOptions{}

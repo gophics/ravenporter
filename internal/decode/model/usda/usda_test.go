@@ -74,14 +74,6 @@ func TestUSDAProbe(t *testing.T) {
 	}
 }
 
-func TestUSDAMeta(t *testing.T) {
-	dec := &usda.Decoder{}
-	assert.Contains(t, dec.Extensions(), ".usda")
-	assert.Contains(t, dec.Extensions(), ".usd")
-	assert.Contains(t, dec.Extensions(), ".usdc")
-	assert.Equal(t, "USDA", dec.FormatName())
-}
-
 func TestUSDADecodeRejectsOversizedUSDZEntry(t *testing.T) {
 	var archive bytes.Buffer
 	zw := zip.NewWriter(&archive)
@@ -454,11 +446,6 @@ func TestUSDADecodeUSDZ(t *testing.T) {
 	assert.Equal(t, "textures/albedo.png", sc.Images[0].Name)
 	assert.Equal(t, ir.ImagePNG, sc.Images[0].Format)
 	assert.NotEmpty(t, sc.Images[0].Compressed)
-}
-
-func TestUSDAExtensionsIncludeUSDZ(t *testing.T) {
-	dec := &usda.Decoder{}
-	assert.Contains(t, dec.Extensions(), ".usdz")
 }
 
 func TestUSDADecodeBasisCurves(t *testing.T) {

@@ -187,8 +187,9 @@ func TestIntegration_Image_Metadata(t *testing.T) {
 	require.Len(t, asset.Images, 1)
 	meta := asset.Images[0].Metadata
 	require.NotNil(t, meta)
-	assert.True(t, len(meta) > 0, "PSD metadata must contain at least one key")
-	t.Logf("PSD metadata keys: %v", meta)
+	assert.Len(t, meta, 2)
+	assert.Equal(t, "8", meta["BitDepth"])
+	assert.Equal(t, "3", meta["ColorMode"])
 }
 
 func TestIntegration_Image_MemoryClamps(t *testing.T) {
@@ -201,6 +202,7 @@ func TestIntegration_Image_MemoryClamps(t *testing.T) {
 				t.Logf(errStrPipelineIl, len(result.Asset.Images))
 			}
 			require.Error(t, err, errStrPipelineErr)
+			assert.Contains(t, err.Error(), errStrMaxFileSize, errStrLimitViol)
 		})
 	}
 }

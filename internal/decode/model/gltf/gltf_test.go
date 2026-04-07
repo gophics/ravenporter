@@ -70,16 +70,6 @@ func TestProbeNonGLB(t *testing.T) {
 	assert.False(t, d.Probe(buf))
 }
 
-func TestExtensions(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, []string{extGLTF, extGLB}, d.Extensions())
-}
-
-func TestFormatName(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, formatName, d.FormatName())
-}
-
 func TestConvertCameraPerspective(t *testing.T) {
 	v := mustParse(`{
 		"name": "MainCam",

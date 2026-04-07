@@ -97,15 +97,7 @@ func TestIntegration_Audio(t *testing.T) {
 				assert.True(t, len(samples) > 0, "PCM samples must be decoded")
 			}
 
-			// AudioMetadata: verify the struct is wired through the pipeline.
-			// If the corpus file has tags, assert they arrived; otherwise assert zero-value.
 			m := clip.Metadata
-			if m.Title != "" {
-				assert.NotEmpty(t, m.Title, "metadata Title must not be empty when populated")
-			}
-			if m.Artist != "" {
-				assert.NotEmpty(t, m.Artist, "metadata Artist must not be empty when populated")
-			}
 			t.Logf("%s: metadata={title=%q artist=%q album=%q genre=%q comment=%q artwork=%d cuepoints=%d}",
 				tc.name, m.Title, m.Artist, m.Album, m.Genre, m.Comment, len(m.Artwork), len(m.CuePoints))
 

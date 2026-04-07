@@ -236,12 +236,6 @@ func TestDecodeErrors(t *testing.T) {
 	}
 }
 
-func TestExtensionsAndFormat(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, []string{".aiff", ".aif"}, d.Extensions())
-	assert.Equal(t, "AIFF", d.FormatName())
-}
-
 func TestSowt8And24Bit(t *testing.T) {
 	tests := []struct {
 		name string

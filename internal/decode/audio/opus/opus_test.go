@@ -309,12 +309,6 @@ func buildOggPage(seqNo int, headerType uint8, granule int64, serial uint32, pay
 	return header
 }
 
-func TestOpus_DecoderProperties(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, "Opus", d.FormatName())
-	assert.Equal(t, []string{".opus"}, d.Extensions())
-}
-
 func TestOpus_DecodeStereo16(t *testing.T) {
 	data, err := os.ReadFile("../testdata/stereo_16bit.opus")
 	if err != nil {

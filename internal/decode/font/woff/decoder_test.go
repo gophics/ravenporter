@@ -61,16 +61,6 @@ func TestDecodeRejectsOversizedInputBeforeRead(t *testing.T) {
 	assert.Zero(t, src.Reads)
 }
 
-func TestExtensions(t *testing.T) {
-	dec := &woff.Decoder{}
-	assert.Equal(t, []string{".woff"}, dec.Extensions())
-}
-
-func TestFormatName(t *testing.T) {
-	dec := &woff.Decoder{}
-	assert.Equal(t, "WOFF", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &woff.Decoder{}
 	opts := detect.DecodeOptions{}

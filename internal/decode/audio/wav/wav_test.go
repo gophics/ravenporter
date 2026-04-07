@@ -134,12 +134,6 @@ func BenchmarkADPCM_Decode(b *testing.B) {
 	}
 }
 
-func TestExtensionsAndFormat(t *testing.T) {
-	d := &Decoder{}
-	assert.Equal(t, []string{".wav"}, d.Extensions())
-	assert.Equal(t, "WAV", d.FormatName())
-}
-
 func buildWAV(audioFmt, channels uint16, sampleRate uint32, bps uint16, pcm, extra []byte) []byte {
 	fmtSize := uint32(16)
 	dataSize := uint32(len(pcm))

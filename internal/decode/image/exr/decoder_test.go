@@ -131,16 +131,6 @@ func TestEXRTiledRaw(t *testing.T) {
 	assert.True(t, len(pb.Data) >= 16)
 }
 
-func TestEXRExtensions(t *testing.T) {
-	dec := &exr.Decoder{}
-	assert.Equal(t, []string{".exr"}, dec.Extensions())
-}
-
-func TestEXRFormatName(t *testing.T) {
-	dec := &exr.Decoder{}
-	assert.Equal(t, "EXR", dec.FormatName())
-}
-
 func TestEXRIsNotGPUCompressed(t *testing.T) {
 	dec := &exr.Decoder{}
 	scene, err := dec.Decode(bytes.NewReader(exrData), detect.DecodeOptions{})

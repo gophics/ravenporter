@@ -87,16 +87,6 @@ func TestDecodeRejectsOversizedInputBeforeRead(t *testing.T) {
 	assert.Zero(t, src.Reads)
 }
 
-func TestExtensions(t *testing.T) {
-	dec := &ttf.Decoder{}
-	assert.Equal(t, []string{".ttf"}, dec.Extensions())
-}
-
-func TestFormatName(t *testing.T) {
-	dec := &ttf.Decoder{}
-	assert.Equal(t, "TTF", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &ttf.Decoder{}
 	opts := detect.DecodeOptions{}

@@ -34,12 +34,6 @@ func TestProbe(t *testing.T) {
 	}
 }
 
-func TestDecoderMeta(t *testing.T) {
-	dec := &threemf.Decoder{}
-	assert.Equal(t, []string{".3mf"}, dec.Extensions())
-	assert.Equal(t, "3MF", dec.FormatName())
-}
-
 func TestDecodeRejectsJunk(t *testing.T) {
 	dec := &threemf.Decoder{}
 	_, err := dec.Decode(bytes.NewReader([]byte("not a zip")), detect.DecodeOptions{})

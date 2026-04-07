@@ -56,18 +56,6 @@ func TestTIFFDecode(t *testing.T) {
 	assert.Len(t, pb.Data, 1*1*4)
 }
 
-func TestTIFFExtensions(t *testing.T) {
-	dec := &imgtiff.Decoder{}
-	exts := dec.Extensions()
-	assert.Contains(t, exts, ".tiff")
-	assert.Contains(t, exts, ".tif")
-}
-
-func TestTIFFFormatName(t *testing.T) {
-	dec := &imgtiff.Decoder{}
-	assert.Equal(t, "TIFF", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &imgtiff.Decoder{}
 	opts := detect.DecodeOptions{}

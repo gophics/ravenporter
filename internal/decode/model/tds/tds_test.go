@@ -529,10 +529,6 @@ func TestDecode3DSBasics(t *testing.T) {
 			assert.True(t, dec.Probe(r))
 			assert.False(t, dec.Probe(bytes.NewReader([]byte("not 3ds data at all"))))
 		}},
-		{"Extensions", func(t *testing.T, dec *tds.Decoder) {
-			assert.Equal(t, []string{".3ds"}, dec.Extensions())
-			assert.Equal(t, "3D Studio", dec.FormatName())
-		}},
 		{"RejectJunk", func(t *testing.T, dec *tds.Decoder) {
 			_, err := dec.Decode(bytes.NewReader([]byte{0x01, 0x02}), detect.DecodeOptions{})
 			require.Error(t, err)

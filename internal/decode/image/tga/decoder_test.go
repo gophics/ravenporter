@@ -55,16 +55,6 @@ func TestTGADecode(t *testing.T) {
 	assert.Len(t, pb.Data, 2*2*4)
 }
 
-func TestTGAExtensions(t *testing.T) {
-	dec := &tga.Decoder{}
-	assert.Contains(t, dec.Extensions(), ".tga")
-}
-
-func TestTGAFormatName(t *testing.T) {
-	dec := &tga.Decoder{}
-	assert.Equal(t, "TGA", dec.FormatName())
-}
-
 func BenchmarkDecode(b *testing.B) {
 	dec := &tga.Decoder{}
 	opts := detect.DecodeOptions{}

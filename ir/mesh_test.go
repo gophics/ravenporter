@@ -8,16 +8,6 @@ import (
 	"github.com/gophics/ravenporter/ir"
 )
 
-func TestVertexCount(t *testing.T) {
-	d := &ir.MeshData{VertexCount: 100, Positions: make([][3]float32, 100)}
-	assert.Equal(t, 100, d.VertexCount)
-}
-
-func TestVertexCountNil(t *testing.T) {
-	d := &ir.MeshData{}
-	assert.Equal(t, 0, d.VertexCount)
-}
-
 func TestHasHelpers(t *testing.T) {
 	d := &ir.MeshData{}
 	assert.False(t, d.HasNormals())

@@ -116,16 +116,6 @@ func TestBVHDecodeAll(t *testing.T) {
 	}
 }
 
-func TestExtensions(t *testing.T) {
-	dec := &Decoder{}
-	assert.Equal(t, []string{".bvh"}, dec.Extensions())
-}
-
-func TestFormatName(t *testing.T) {
-	dec := &Decoder{}
-	assert.Equal(t, "BVH", dec.FormatName())
-}
-
 func TestRegistered(t *testing.T) {
 	_, ok := detect.NewRegistry(Registrations()...).Lookup(ir.FormatBVH)
 	assert.True(t, ok)

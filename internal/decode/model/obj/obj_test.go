@@ -124,16 +124,6 @@ func TestProbe(t *testing.T) {
 	assert.False(t, dec.Probe(strings.NewReader("")))
 }
 
-func TestExtensions(t *testing.T) {
-	dec := &obj.Decoder{}
-	assert.Equal(t, []string{".obj"}, dec.Extensions())
-}
-
-func TestFormatName(t *testing.T) {
-	dec := &obj.Decoder{}
-	assert.Equal(t, "OBJ", dec.FormatName())
-}
-
 func TestMTLParsing(t *testing.T) {
 	mtl := `newmtl red
 Kd 1.0 0.0 0.0
