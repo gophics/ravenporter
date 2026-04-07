@@ -99,7 +99,7 @@ func WithDecodeMaxFileSize(size int64) Option {
 	return func(cfg *config) error {
 		cfg.DecodeOpts.MaxFileSize = size
 		cfg.recordProfile(func(profile *Profile) {
-			profile.Decode.MaxFileSize = cloneInt64Ptr(&size)
+			profile.Decode.MaxFileSize = clonePtr(&size)
 		})
 		return nil
 	}
@@ -110,7 +110,7 @@ func WithDecodeMaxVertices(limit int) Option {
 	return func(cfg *config) error {
 		cfg.DecodeOpts.MaxVertices = limit
 		cfg.recordProfile(func(profile *Profile) {
-			profile.Decode.MaxVertices = cloneIntPtr(&limit)
+			profile.Decode.MaxVertices = clonePtr(&limit)
 		})
 		return nil
 	}
@@ -121,7 +121,7 @@ func WithDecodeMaxImagePixels(limit int) Option {
 	return func(cfg *config) error {
 		cfg.DecodeOpts.MaxImagePixels = limit
 		cfg.recordProfile(func(profile *Profile) {
-			profile.Decode.MaxImagePixels = cloneIntPtr(&limit)
+			profile.Decode.MaxImagePixels = clonePtr(&limit)
 		})
 		return nil
 	}
@@ -132,7 +132,7 @@ func WithDecodeMaxAudioSamples(limit int) Option {
 	return func(cfg *config) error {
 		cfg.DecodeOpts.MaxAudioSamples = limit
 		cfg.recordProfile(func(profile *Profile) {
-			profile.Decode.MaxAudioSamples = cloneIntPtr(&limit)
+			profile.Decode.MaxAudioSamples = clonePtr(&limit)
 		})
 		return nil
 	}
@@ -144,7 +144,7 @@ func WithGlobalScale(scale float64) Option {
 		cfg.ProcessFlags |= process.PPGlobalScale
 		cfg.ProcessOpts.GlobalScale = scale
 		cfg.recordProfile(func(profile *Profile) {
-			profile.Process.GlobalScale = cloneFloat64Ptr(&scale)
+			profile.Process.GlobalScale = clonePtr(&scale)
 		})
 		return nil
 	}

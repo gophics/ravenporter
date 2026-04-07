@@ -45,7 +45,7 @@ func TestWriteReadRoundTrip(t *testing.T) {
 	assert.Equal(t, result.Asset.Name, cooked.Name)
 	assert.Equal(t, result.Asset.Metadata, cooked.Metadata)
 	assert.Len(t, cooked.Nodes, 1)
-	assert.Nil(t, cooked.Nodes[0].Extras)
+	assert.Equal(t, result.Asset.Nodes[0].Extras, cooked.Nodes[0].Extras)
 	assert.Equal(t, result.Asset.Nodes[0].MeshIndex, cooked.Nodes[0].MeshIndex)
 	assert.Equal(t, result.Asset.RootNodes, cooked.RootNodes)
 
@@ -107,10 +107,10 @@ func TestWriteReadRoundTrip(t *testing.T) {
 	require.Len(t, cooked.CollisionMeshes, 1)
 	assert.Equal(t, result.Asset.CollisionMeshes[0], cooked.CollisionMeshes[0])
 
-	assert.Equal(t, []int{0}, asset.FindMesh("Mesh"))
-	assert.Equal(t, []int{0}, asset.FindMaterial("Material"))
-	assert.Equal(t, []int{0}, asset.FindAnimation("Anim"))
-	assert.Equal(t, []int{0}, asset.FindNode("Root"))
+	assert.Equal(t, 0, asset.FindMesh("Mesh"))
+	assert.Equal(t, 0, asset.FindMaterial("Material"))
+	assert.Equal(t, 0, asset.FindAnimation("Anim"))
+	assert.Equal(t, 0, asset.FindNode("Root"))
 }
 
 func TestWriteNormalizesGraph(t *testing.T) {
@@ -132,10 +132,10 @@ func TestWriteNormalizesGraph(t *testing.T) {
 	require.NotNil(t, cooked)
 	require.NotNil(t, cooked.Asset)
 	defer func() { require.NoError(t, cooked.Close()) }()
-	assert.Equal(t, ir.NoIndex, cooked.Asset.Nodes[0].ParentIndex)
-	assert.Equal(t, 0, cooked.Asset.Nodes[1].ParentIndex)
-	assert.Equal(t, []int{0}, cooked.Asset.RootNodes)
-	assert.Equal(t, []int{0}, cooked.Asset.Scenes[0].RootNodes)
+	assert.Equal(t, ir.NoIndex, cooked.Nodes[0].ParentIndex)
+	assert.Equal(t, 0, cooked.Nodes[1].ParentIndex)
+	assert.Equal(t, []int{0}, cooked.RootNodes)
+	assert.Equal(t, []int{0}, cooked.Scenes[0].RootNodes)
 }
 
 func TestWriteFailsOnExternalTexture(t *testing.T) {
@@ -213,6 +213,7 @@ func TestWriteFailsOnExternalTexture(t *testing.T) {
 	}
 }
 
+
 func TestReadRejectsCorruptContainer(t *testing.T) {
 	result := &ravenporter.Result{
 		Asset:  fullScene(),
@@ -286,8 +287,8 @@ func TestImportCookReadMeshoptGLTF(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, asset.Asset)
 	defer func() { require.NoError(t, asset.Close()) }()
-	assert.Equal(t, len(result.Asset.Meshes), len(asset.Asset.Meshes))
-	assert.Equal(t, len(result.Asset.Nodes), len(asset.Asset.Nodes))
+	assert.Equal(t, len(result.Asset.Meshes), len(asset.Meshes))
+	assert.Equal(t, len(result.Asset.Nodes), len(asset.Nodes))
 }
 
 func TestImportCookReadOBJ(t *testing.T) {
@@ -303,7 +304,7 @@ func TestImportCookReadOBJ(t *testing.T) {
 
 	asset, err := Read(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
 	require.NoError(t, err)
-	require.Len(t, asset.Asset.Meshes, 1)
+	require.Len(t, asset.Meshes, 1)
 	require.NoError(t, asset.Close())
 }
 
@@ -320,10 +321,10 @@ func TestImportCookReadEmbeddedTextureGLTF(t *testing.T) {
 
 	asset, err := Read(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
 	require.NoError(t, err)
-	require.Len(t, asset.Asset.Textures, 1)
-	require.Len(t, asset.Asset.Images, 1)
+	require.Len(t, asset.Textures, 1)
+	require.Len(t, asset.Images, 1)
 	defer func() { require.NoError(t, asset.Close()) }()
-	compressed, err := asset.Asset.Images[asset.Asset.Textures[0].ImageIndex].CompressedBytes()
+	compressed, err := asset.Images[asset.Textures[0].ImageIndex].CompressedBytes()
 	require.NoError(t, err)
 	assert.NotEmpty(t, compressed)
 }
@@ -346,7 +347,7 @@ func TestOpenEntrypoints(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, asset.Close()) }()
 		require.NotNil(t, asset.Asset)
-		assert.Equal(t, result.Asset.Name, asset.Asset.Name)
+		assert.Equal(t, result.Asset.Name, asset.Name)
 	})
 
 	t.Run("OpenFS", func(t *testing.T) {
@@ -358,7 +359,7 @@ func TestOpenEntrypoints(t *testing.T) {
 		require.NoError(t, err)
 		defer func() { require.NoError(t, asset.Close()) }()
 		require.NotNil(t, asset.Asset)
-		assert.Equal(t, result.Asset.Name, asset.Asset.Name)
+		assert.Equal(t, result.Asset.Name, asset.Name)
 	})
 }
 
@@ -375,9 +376,9 @@ func TestReadWithEagerMedia(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, asset.Close()) }()
 
-	image := asset.Asset.Images[0]
-	audio := asset.Asset.AudioClips[0]
-	font := asset.Asset.Fonts[0].Vector
+	image := asset.Images[0]
+	audio := asset.AudioClips[0]
+	font := asset.Fonts[0].Vector
 
 	assert.NotEmpty(t, image.Compressed)
 	assert.NotEmpty(t, audio.Compressed)
@@ -400,7 +401,7 @@ func TestOpenCloseInvalidatesLazyMedia(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, asset.Close())
 
-	_, err = asset.Asset.Images[0].CompressedBytes()
+	_, err = asset.Images[0].CompressedBytes()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "closed")
 }
@@ -418,7 +419,7 @@ func TestWriteWithImagePixelsIfPresent(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, asset.Close()) }()
 
-	require.NotNil(t, asset.Asset.Images[0].Pixels())
+	require.NotNil(t, asset.Images[0].Pixels())
 }
 
 func TestWritePreservesDecodeOnlyImage(t *testing.T) {
@@ -447,8 +448,8 @@ func TestWritePreservesDecodeOnlyImage(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { require.NoError(t, asset.Close()) }()
 
-	require.NotNil(t, asset.Asset.Images[0].Pixels())
-	assert.Equal(t, []byte{1, 2, 3, 4}, asset.Asset.Images[0].Pixels().Data)
+	require.NotNil(t, asset.Images[0].Pixels())
+	assert.Equal(t, []byte{1, 2, 3, 4}, asset.Images[0].Pixels().Data)
 }
 
 func TestWriteRejectsEmbeddedMediaOverLimit(t *testing.T) {

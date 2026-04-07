@@ -3,7 +3,6 @@ package cache
 import (
 	"encoding/binary"
 	"math"
-	"sort"
 )
 
 const (
@@ -11,9 +10,7 @@ const (
 	uint32Bytes  = 4
 	uint64Bytes  = 8
 	int32Bytes   = 4
-	int64Bytes   = 8
 	float32Bytes = 4
-	float64Bytes = 8
 	shift8       = 8
 	shift16      = 16
 	shift24      = 24
@@ -356,25 +353,11 @@ func (d *decoder) count(minBytesPerItem int) int {
 	return intCount
 }
 
-func sortedStringKeys(values map[string]string) []string {
-	keys := make([]string, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 func toUint32(value int) (uint32, error) {
 	if value < 0 || uint64(value) > math.MaxUint32 {
 		return 0, fmtErrorf("cache: count %d exceeds uint32", value)
 	}
-	return binary.LittleEndian.Uint32([]byte{
-		byte(value),
-		byte(value >> shift8),
-		byte(value >> shift16),
-		byte(value >> shift24),
-	}), nil
+	return uint32(value), nil //nolint:gosec // range validated above
 }
 
 func toInt32(value int) (int32, error) {

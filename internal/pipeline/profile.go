@@ -188,16 +188,16 @@ func MergeProfiles(base, override Profile) Profile {
 		merged.Preset = canonicalPresetName(override.Preset)
 	}
 	if override.Decode.MaxFileSize != nil {
-		merged.Decode.MaxFileSize = cloneInt64Ptr(override.Decode.MaxFileSize)
+		merged.Decode.MaxFileSize = clonePtr(override.Decode.MaxFileSize)
 	}
 	if override.Decode.MaxVertices != nil {
-		merged.Decode.MaxVertices = cloneIntPtr(override.Decode.MaxVertices)
+		merged.Decode.MaxVertices = clonePtr(override.Decode.MaxVertices)
 	}
 	if override.Decode.MaxImagePixels != nil {
-		merged.Decode.MaxImagePixels = cloneIntPtr(override.Decode.MaxImagePixels)
+		merged.Decode.MaxImagePixels = clonePtr(override.Decode.MaxImagePixels)
 	}
 	if override.Decode.MaxAudioSamples != nil {
-		merged.Decode.MaxAudioSamples = cloneIntPtr(override.Decode.MaxAudioSamples)
+		merged.Decode.MaxAudioSamples = clonePtr(override.Decode.MaxAudioSamples)
 	}
 	if len(override.Process.EnabledSteps) > 0 {
 		merged.Process.EnabledSteps = mergeStringSlices(merged.Process.EnabledSteps, override.Process.EnabledSteps)
@@ -206,25 +206,25 @@ func MergeProfiles(base, override Profile) Profile {
 		merged.Process.DisabledSteps = mergeStringSlices(merged.Process.DisabledSteps, override.Process.DisabledSteps)
 	}
 	if override.Process.SmoothNormalAngle != nil {
-		merged.Process.SmoothNormalAngle = cloneFloat64Ptr(override.Process.SmoothNormalAngle)
+		merged.Process.SmoothNormalAngle = clonePtr(override.Process.SmoothNormalAngle)
 	}
 	if override.Process.MaxBoneWeights != nil {
-		merged.Process.MaxBoneWeights = cloneIntPtr(override.Process.MaxBoneWeights)
+		merged.Process.MaxBoneWeights = clonePtr(override.Process.MaxBoneWeights)
 	}
 	if override.Process.MaxVerticesPerMesh != nil {
-		merged.Process.MaxVerticesPerMesh = cloneIntPtr(override.Process.MaxVerticesPerMesh)
+		merged.Process.MaxVerticesPerMesh = clonePtr(override.Process.MaxVerticesPerMesh)
 	}
 	if override.Process.MaxBonesPerMesh != nil {
-		merged.Process.MaxBonesPerMesh = cloneIntPtr(override.Process.MaxBonesPerMesh)
+		merged.Process.MaxBonesPerMesh = clonePtr(override.Process.MaxBonesPerMesh)
 	}
 	if override.Process.MaxTextureSize != nil {
-		merged.Process.MaxTextureSize = cloneIntPtr(override.Process.MaxTextureSize)
+		merged.Process.MaxTextureSize = clonePtr(override.Process.MaxTextureSize)
 	}
 	if override.Process.AtlasFontSize != nil {
-		merged.Process.AtlasFontSize = cloneIntPtr(override.Process.AtlasFontSize)
+		merged.Process.AtlasFontSize = clonePtr(override.Process.AtlasFontSize)
 	}
 	if override.Process.GlobalScale != nil {
-		merged.Process.GlobalScale = cloneFloat64Ptr(override.Process.GlobalScale)
+		merged.Process.GlobalScale = clonePtr(override.Process.GlobalScale)
 	}
 	if override.Process.TargetUpAxis != nil {
 		axis := canonicalAxisName(*override.Process.TargetUpAxis)
@@ -234,17 +234,17 @@ func MergeProfiles(base, override Profile) Profile {
 		merged.Process.RemoveFlags = mergeComponentFlagNames(merged.Process.RemoveFlags, override.Process.RemoveFlags)
 	}
 	if override.Process.TargetSampleRate != nil {
-		merged.Process.TargetSampleRate = cloneIntPtr(override.Process.TargetSampleRate)
+		merged.Process.TargetSampleRate = clonePtr(override.Process.TargetSampleRate)
 	}
 	if override.Process.TargetChannels != nil {
-		merged.Process.TargetChannels = cloneIntPtr(override.Process.TargetChannels)
+		merged.Process.TargetChannels = clonePtr(override.Process.TargetChannels)
 	}
 	if override.Process.DegenerateMode != nil {
 		mode := canonicalDegenerateModeName(*override.Process.DegenerateMode)
 		merged.Process.DegenerateMode = &mode
 	}
 	if override.Process.DeboneThreshold != nil {
-		merged.Process.DeboneThreshold = cloneFloat64Ptr(override.Process.DeboneThreshold)
+		merged.Process.DeboneThreshold = clonePtr(override.Process.DeboneThreshold)
 	}
 	return merged
 }
@@ -278,39 +278,39 @@ func profileFromConfig(opts config) Profile {
 		profile.Preset = canonicalPresetName(opts.Preset)
 	}
 	if opts.DecodeOpts.MaxFileSize != 0 {
-		profile.Decode.MaxFileSize = cloneInt64Ptr(&opts.DecodeOpts.MaxFileSize)
+		profile.Decode.MaxFileSize = clonePtr(&opts.DecodeOpts.MaxFileSize)
 	}
 	if opts.DecodeOpts.MaxVertices != 0 {
-		profile.Decode.MaxVertices = cloneIntPtr(&opts.DecodeOpts.MaxVertices)
+		profile.Decode.MaxVertices = clonePtr(&opts.DecodeOpts.MaxVertices)
 	}
 	if opts.DecodeOpts.MaxImagePixels != 0 {
-		profile.Decode.MaxImagePixels = cloneIntPtr(&opts.DecodeOpts.MaxImagePixels)
+		profile.Decode.MaxImagePixels = clonePtr(&opts.DecodeOpts.MaxImagePixels)
 	}
 	if opts.DecodeOpts.MaxAudioSamples != 0 {
-		profile.Decode.MaxAudioSamples = cloneIntPtr(&opts.DecodeOpts.MaxAudioSamples)
+		profile.Decode.MaxAudioSamples = clonePtr(&opts.DecodeOpts.MaxAudioSamples)
 	}
 
 	profile.Process.EnabledSteps = enabledStepsFromOptions(opts)
 	if opts.ProcessOpts.SmoothNormalAngle != 0 {
-		profile.Process.SmoothNormalAngle = cloneFloat64Ptr(&opts.ProcessOpts.SmoothNormalAngle)
+		profile.Process.SmoothNormalAngle = clonePtr(&opts.ProcessOpts.SmoothNormalAngle)
 	}
 	if opts.ProcessOpts.MaxBoneWeights != 0 {
-		profile.Process.MaxBoneWeights = cloneIntPtr(&opts.ProcessOpts.MaxBoneWeights)
+		profile.Process.MaxBoneWeights = clonePtr(&opts.ProcessOpts.MaxBoneWeights)
 	}
 	if opts.ProcessOpts.MaxVerticesPerMesh != 0 {
-		profile.Process.MaxVerticesPerMesh = cloneIntPtr(&opts.ProcessOpts.MaxVerticesPerMesh)
+		profile.Process.MaxVerticesPerMesh = clonePtr(&opts.ProcessOpts.MaxVerticesPerMesh)
 	}
 	if opts.ProcessOpts.MaxBonesPerMesh != 0 {
-		profile.Process.MaxBonesPerMesh = cloneIntPtr(&opts.ProcessOpts.MaxBonesPerMesh)
+		profile.Process.MaxBonesPerMesh = clonePtr(&opts.ProcessOpts.MaxBonesPerMesh)
 	}
 	if opts.ProcessOpts.MaxTextureSize != 0 {
-		profile.Process.MaxTextureSize = cloneIntPtr(&opts.ProcessOpts.MaxTextureSize)
+		profile.Process.MaxTextureSize = clonePtr(&opts.ProcessOpts.MaxTextureSize)
 	}
 	if opts.ProcessOpts.AtlasFontSize != 0 {
-		profile.Process.AtlasFontSize = cloneIntPtr(&opts.ProcessOpts.AtlasFontSize)
+		profile.Process.AtlasFontSize = clonePtr(&opts.ProcessOpts.AtlasFontSize)
 	}
 	if opts.ProcessFlags&process.PPGlobalScale != 0 {
-		profile.Process.GlobalScale = cloneFloat64Ptr(&opts.ProcessOpts.GlobalScale)
+		profile.Process.GlobalScale = clonePtr(&opts.ProcessOpts.GlobalScale)
 	}
 	if opts.ProcessFlags&process.PPFixUpAxis != 0 {
 		axis := axisName(opts.ProcessOpts.TargetUpAxis)
@@ -320,10 +320,10 @@ func profileFromConfig(opts config) Profile {
 		profile.Process.RemoveFlags = componentFlagNames(opts.ProcessOpts.RemoveFlags)
 	}
 	if opts.ProcessOpts.TargetSampleRate != 0 {
-		profile.Process.TargetSampleRate = cloneIntPtr(&opts.ProcessOpts.TargetSampleRate)
+		profile.Process.TargetSampleRate = clonePtr(&opts.ProcessOpts.TargetSampleRate)
 	}
 	if opts.ProcessOpts.TargetChannels != 0 {
-		profile.Process.TargetChannels = cloneIntPtr(&opts.ProcessOpts.TargetChannels)
+		profile.Process.TargetChannels = clonePtr(&opts.ProcessOpts.TargetChannels)
 	}
 	if opts.ProcessFlags&process.PPRemoveDegenerates != 0 && opts.ProcessOpts.DegenerateMode != process.DegenerateModeRemove {
 		mode := degenerateModeName(opts.ProcessOpts.DegenerateMode)
@@ -366,7 +366,7 @@ func ParseProfileTOML(data []byte) (Profile, error) {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if comment := strings.IndexByte(line, '#'); comment >= 0 {
+		if comment := indexUnquotedHash(line); comment >= 0 {
 			line = strings.TrimSpace(line[:comment])
 			if line == "" {
 				continue
@@ -929,6 +929,27 @@ func parseTOMLStringArray(raw string) ([]string, error) {
 	return values, nil
 }
 
+// indexUnquotedHash returns the byte index of the first '#' that is
+// outside of double-quoted strings, or -1 if none is found.
+func indexUnquotedHash(line string) int {
+	inString := false
+	for i := 0; i < len(line); i++ {
+		switch line[i] {
+		case '\\':
+			if inString {
+				i++ // skip escaped character
+			}
+		case '"':
+			inString = !inString
+		case '#':
+			if !inString {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
 func enabledStepsFromOptions(opts config) []string {
 	steps := make([]string, 0, len(processStepDefs))
 	for _, def := range processStepDefs {
@@ -1102,23 +1123,7 @@ func isDedicatedProcessStep(flag process.PPFlag, opts process.Options) bool {
 	}
 }
 
-func cloneInt64Ptr(v *int64) *int64 {
-	if v == nil {
-		return nil
-	}
-	value := *v
-	return &value
-}
-
-func cloneIntPtr(v *int) *int {
-	if v == nil {
-		return nil
-	}
-	value := *v
-	return &value
-}
-
-func cloneFloat64Ptr(v *float64) *float64 {
+func clonePtr[T any](v *T) *T {
 	if v == nil {
 		return nil
 	}

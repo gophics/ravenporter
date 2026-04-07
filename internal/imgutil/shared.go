@@ -14,7 +14,7 @@ import (
 	"github.com/gophics/ravenporter/ir"
 )
 
-// DecodeErrStr is the legacy name wrapper used by pre-existing string decoders.
+// DecodeErrStr wraps a decode failure into a formatted error using a string format name.
 func DecodeErrStr(name string, cause error) error {
 	return decutil.DecodeErr(ir.FormatID(name), "failed to decode image", cause)
 }

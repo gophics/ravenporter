@@ -45,7 +45,7 @@ func TestProfileTOMLRoundTrip(t *testing.T) {
 			TargetUpAxis:      &axis,
 			RemoveFlags:       []string{"normals", "texcoord0"},
 			TargetSampleRate:  &sampleRate,
-			DegenerateMode:    stringPtr("convert"),
+			DegenerateMode:    toPtr("convert"),
 			DeboneThreshold:   &deboneThreshold,
 		},
 	}
@@ -118,8 +118,8 @@ func TestApplyProfile(t *testing.T) {
 			MaxBoneWeights:  &maxBoneWeights,
 			TargetChannels:  &targetChannels,
 			RemoveFlags:     []string{"normals"},
-			DegenerateMode:  stringPtr("convert"),
-			DeboneThreshold: float64Ptr(0.5),
+			DegenerateMode:  toPtr("convert"),
+			DeboneThreshold: toPtr(0.5),
 		},
 	}
 
@@ -186,10 +186,6 @@ func TestMergeProfiles(t *testing.T) {
 	assert.Equal(t, []string{"normals"}, merged.Process.RemoveFlags)
 }
 
-func stringPtr(value string) *string {
-	return &value
-}
-
-func float64Ptr(value float64) *float64 {
+func toPtr[T any](value T) *T {
 	return &value
 }

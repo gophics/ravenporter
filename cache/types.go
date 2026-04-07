@@ -18,14 +18,9 @@ type ReadOption func(*readConfig) error
 // Asset is a cooked runtime asset.
 type Asset struct {
 	Manifest Manifest
-	Asset    *ir.Asset
+	*ir.Asset
 
 	store *blobStore
-
-	meshes     map[string][]int
-	materials  map[string][]int
-	animations map[string][]int
-	nodes      map[string][]int
 }
 
 // Manifest describes the cooked asset provenance and summary.
@@ -53,7 +48,6 @@ func Write(w io.Writer, result *ravenporter.Result, options ...Option) error {
 	if err != nil {
 		return err
 	}
-	_ = cfg
 
 	if err := Validate(result); err != nil {
 		return err
@@ -92,7 +86,6 @@ func Read(r io.ReaderAt, size int64, options ...ReadOption) (*Asset, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = cfg
 
 	sections, err := readContainer(r, size, cfg)
 	if err != nil {
@@ -118,7 +111,6 @@ func Read(r io.ReaderAt, size int64, options ...ReadOption) (*Asset, error) {
 		Asset:    decodedAsset,
 		store:    sections.blobs,
 	}
-	asset.buildIndexes()
 	return asset, nil
 }
 
@@ -201,9 +193,7 @@ func Validate(result *ravenporter.Result) error {
 			}
 			continue
 		}
-		if !isDataURI(image.SourcePath) {
-			return fmtErrorf("cache: texture[%d] still references external path %q", i, image.SourcePath)
-		}
+		return fmtErrorf("cache: texture[%d] still references external path %q", i, image.SourcePath)
 	}
 	for i, mat := range result.Asset.Materials {
 		if mat == nil {

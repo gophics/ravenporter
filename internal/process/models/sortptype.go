@@ -1,7 +1,8 @@
 package models
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"github.com/gophics/ravenporter/internal/process/core"
 	"github.com/gophics/ravenporter/ir"
@@ -19,8 +20,8 @@ func (s *sortPTypeStep) Apply(asset *ir.Asset, _ core.Options) (*ir.Asset, error
 			continue
 		}
 
-		sort.SliceStable(mesh.Primitives, func(i, j int) bool {
-			return mesh.Primitives[i].Mode < mesh.Primitives[j].Mode
+		slices.SortStableFunc(mesh.Primitives, func(a, b ir.Primitive) int {
+			return cmp.Compare(a.Mode, b.Mode)
 		})
 	}
 	return asset, nil

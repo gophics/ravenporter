@@ -1,7 +1,8 @@
 package cache
 
 import (
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/gophics/ravenporter/ir"
 )
@@ -16,7 +17,7 @@ const (
 )
 
 const (
-	minNodeBytes             = 138
+	minNodeBytes             = 142
 	minMaterialPropertyBytes = 5
 	minStringMapEntryBytes   = 8
 	minRuneIntEntryBytes     = 8
@@ -173,7 +174,11 @@ func readScene(dec *decoder, blobs *blobStore) (*ir.Asset, error) {
 	nodeCount := dec.count(minNodeBytes)
 	asset.Nodes = make([]ir.Node, nodeCount)
 	for i := range asset.Nodes {
-		asset.Nodes[i] = readNode(dec)
+		node, err := readNode(dec)
+		if err != nil {
+			return nil, err
+		}
+		asset.Nodes[i] = node
 	}
 
 	asset.Meshes = readMeshSlice(dec)
@@ -241,10 +246,11 @@ func writeNode(enc *encoder, node ir.Node) {
 	enc.bool(node.IsCollision)
 	enc.float32s(node.MorphWeights)
 	enc.ints(node.Children)
+	writeMaterialProperties(enc, node.Extras)
 }
 
-func readNode(dec *decoder) ir.Node {
-	return ir.Node{
+func readNode(dec *decoder) (ir.Node, error) {
+	node := ir.Node{
 		Name:          dec.string(),
 		Transform:     readTransform(dec),
 		Visible:       dec.bool(),
@@ -260,6 +266,12 @@ func readNode(dec *decoder) ir.Node {
 		MorphWeights:  dec.float32s(),
 		Children:      dec.ints(),
 	}
+	extras, err := readMaterialProperties(dec)
+	if err != nil {
+		return ir.Node{}, err
+	}
+	node.Extras = extras
+	return node, nil
 }
 
 func writeSceneEntries(enc *encoder, scenes []*ir.Scene) {
@@ -401,7 +413,7 @@ func readBlobRef(dec *decoder) blobRef {
 }
 
 func writeStringMap(enc *encoder, values map[string]string) {
-	keys := sortedStringKeys(values)
+	keys := slices.Sorted(maps.Keys(values))
 	enc.count(len(keys))
 	for _, key := range keys {
 		enc.string(key)
@@ -480,21 +492,11 @@ func readGlyphMap(dec *decoder) map[rune]ir.BitmapGlyph {
 }
 
 func sortedRuneKeys[T any](values map[rune]T) []rune {
-	keys := make([]rune, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-	return keys
+	return slices.Sorted(maps.Keys(values))
 }
 
 func sortedAnyKeys(values map[string]any) []string {
-	keys := make([]string, 0, len(values))
-	for key := range values {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
+	return slices.Sorted(maps.Keys(values))
 }
 
 func writeVec2(enc *encoder, value [2]float32) {

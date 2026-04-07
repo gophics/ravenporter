@@ -11,6 +11,8 @@ import (
 
 // Option configures an import operation.
 type Option = pipeline.Option
+
+// LoadMask controls which content domains are kept after import.
 type LoadMask = pipeline.LoadMask
 
 // LoadMask flags keep the selected content domains in the returned scene.

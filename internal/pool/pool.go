@@ -4,69 +4,53 @@ package pool
 import (
 	"bytes"
 	"compress/zlib"
+	"errors"
 	"io"
 	"sync"
 )
 
 const defaultBufSize = 4096
 
-// ByteBuffer is a sync.Pool-backed reusable byte slice.
-type ByteBuffer struct {
+// SlicePool is a sync.Pool-backed reusable typed slice.
+type SlicePool[T any] struct {
 	pool sync.Pool
 }
+
+// NewSlicePool creates a pool that allocates slices of the given default size.
+func NewSlicePool[T any](size int) *SlicePool[T] {
+	if size <= 0 {
+		size = defaultBufSize
+	}
+	return &SlicePool[T]{
+		pool: sync.Pool{
+			New: func() any { s := make([]T, size); return &s },
+		},
+	}
+}
+
+// Get retrieves a slice from the pool.
+func (p *SlicePool[T]) Get() *[]T {
+	buf, _ := p.pool.Get().(*[]T) //nolint:errcheck // pool only stores *[]T
+	return buf
+}
+
+// Put returns a slice to the pool, resetting its length to the full capacity.
+func (p *SlicePool[T]) Put(buf *[]T) {
+	*buf = (*buf)[:cap(*buf)]
+	p.pool.Put(buf)
+}
+
+// ByteBuffer is a SlicePool specialized for byte slices.
+type ByteBuffer = SlicePool[byte]
+
+// Float32Buffer is a SlicePool specialized for float32 slices.
+type Float32Buffer = SlicePool[float32]
 
 // NewByteBuffer creates a pool that allocates byte slices of the given default size.
-func NewByteBuffer(size int) *ByteBuffer {
-	if size <= 0 {
-		size = defaultBufSize
-	}
-	return &ByteBuffer{
-		pool: sync.Pool{
-			New: func() any { s := make([]byte, size); return &s },
-		},
-	}
-}
-
-// Get retrieves a byte slice from the pool.
-func (p *ByteBuffer) Get() *[]byte {
-	buf, _ := p.pool.Get().(*[]byte) //nolint:errcheck // pool only stores *[]byte
-	return buf
-}
-
-// Put returns a byte slice to the pool, resetting its length to the full capacity.
-func (p *ByteBuffer) Put(buf *[]byte) {
-	*buf = (*buf)[:cap(*buf)]
-	p.pool.Put(buf)
-}
-
-// Float32Buffer is a sync.Pool-backed reusable float32 slice.
-type Float32Buffer struct {
-	pool sync.Pool
-}
+func NewByteBuffer(size int) *ByteBuffer { return NewSlicePool[byte](size) }
 
 // NewFloat32Buffer creates a pool that allocates float32 slices of the given default size.
-func NewFloat32Buffer(size int) *Float32Buffer {
-	if size <= 0 {
-		size = defaultBufSize
-	}
-	return &Float32Buffer{
-		pool: sync.Pool{
-			New: func() any { s := make([]float32, size); return &s },
-		},
-	}
-}
-
-// Get retrieves a float32 slice from the pool.
-func (p *Float32Buffer) Get() *[]float32 {
-	buf, _ := p.pool.Get().(*[]float32) //nolint:errcheck // pool only stores *[]float32
-	return buf
-}
-
-// Put returns a float32 slice to the pool, resetting its length to the full capacity.
-func (p *Float32Buffer) Put(buf *[]float32) {
-	*buf = (*buf)[:cap(*buf)]
-	p.pool.Put(buf)
-}
+func NewFloat32Buffer(size int) *Float32Buffer { return NewSlicePool[float32](size) }
 
 type zlibResetter interface {
 	io.ReadCloser
@@ -80,7 +64,8 @@ func newZlibReader(src []byte) (zlibResetter, error) {
 	}
 	zr, ok := r.(zlibResetter)
 	if !ok {
-		return nil, err
+		_ = r.Close() //nolint:errcheck // discarding close error; returning type assertion error
+		return nil, errors.New("pool: zlib reader does not implement Reset")
 	}
 	return zr, nil
 }
