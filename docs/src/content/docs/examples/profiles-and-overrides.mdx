@@ -1,0 +1,41 @@
+---
+title: Profiles And Overrides Example
+description: Resolve, save, load, and override a reusable RavenPorter profile.
+---
+
+import ExampleSource from "../../../components/ExampleSource.astro";
+
+This is the full profile flow in one place: build a profile, save it as TOML, load it back, override one setting, then use it for a real import.
+
+## Key APIs
+
+- `ravenporter.ResolveProfile()`
+- `ravenporter.SaveProfile()`
+- `ravenporter.LoadProfile()`
+- `ravenporter.WithProfile()`
+- `ravenporter.WithGlobalScale()`
+
+## Run
+
+```bash
+go run ./examples/profiles-and-overrides
+```
+
+## Expected Output
+
+```text
+saved preset=quality scale=0.5 embed=true
+effective preset=quality scale=2 embed=true
+import format=obj meshes=1
+```
+
+## Source
+
+<ExampleSource example="profiles-and-overrides" />
+
+## Related Reading
+
+- [Profiles and Presets](../../profiles-and-presets/)
+- [Quick Start](../../quick-start/)
+- [ravenporter Package](../../ravenporter-package/)
+- [View full example on GitHub](https://github.com/gophics/ravenporter/tree/master/examples/profiles-and-overrides)

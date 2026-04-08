@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	appVersion = "0.2.0-dev"
+	appVersion = "0.1.0"
 	exitFail   = 1
 )
 

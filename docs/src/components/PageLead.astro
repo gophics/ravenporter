@@ -1,0 +1,89 @@
+---
+interface Props {
+  eyebrow?: string;
+  summary: string;
+  points?: string[];
+}
+
+const { eyebrow, summary, points = [] } = Astro.props;
+---
+
+<section class="page-lead not-content">
+  <div class="page-lead__copy">
+    {eyebrow && <p class="page-lead__eyebrow">{eyebrow}</p>}
+    <p class="page-lead__summary">{summary}</p>
+  </div>
+  {
+    points.length > 0 && (
+      <ul class="page-lead__points" data-pagefind-ignore>
+        {points.map((point) => <li>{point}</li>)}
+      </ul>
+    )
+  }
+</section>
+
+<style>
+  .page-lead {
+    display: grid;
+    gap: 0.9rem;
+    margin: 0 0 1.75rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--sl-color-hairline);
+  }
+
+  .page-lead__copy {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .page-lead__eyebrow {
+    margin: 0;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sl-color-text-2);
+  }
+
+  .page-lead__summary {
+    margin: 0;
+    max-width: 46rem;
+    font-size: clamp(1.08rem, 1rem + 0.35vw, 1.22rem);
+    line-height: 1.75;
+    color: var(--sl-color-text);
+  }
+
+  .page-lead__points {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .page-lead__points li {
+    position: relative;
+    margin: 0;
+    padding-left: 1rem;
+    line-height: 1.65;
+    color: var(--sl-color-text-2);
+  }
+
+  .page-lead__points li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.72em;
+    width: 0.36rem;
+    height: 0.36rem;
+    border-radius: 999px;
+    background: var(--sl-color-accent);
+  }
+
+  @media (min-width: 50rem) {
+    .page-lead {
+      grid-template-columns: minmax(0, 1.45fr) minmax(16rem, 0.95fr);
+      align-items: start;
+    }
+  }
+</style>

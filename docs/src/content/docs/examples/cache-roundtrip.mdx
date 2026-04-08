@@ -1,0 +1,37 @@
+---
+title: Cache Roundtrip Example
+description: Cook a RavenPorter runtime cache and read it back through the cache package.
+---
+
+import ExampleSource from "../../../components/ExampleSource.astro";
+
+This example covers the handoff from import time to runtime packaging. It imports a tiny asset, writes an `.rpcache` payload, opens it again, and closes the reopened package.
+
+## Key APIs
+
+- `cache.Write()`
+- `cache.Read()`
+- `(*cache.Asset).Close()`
+
+## Run
+
+```bash
+go run ./examples/cache-roundtrip
+```
+
+## Expected Output
+
+```text
+source=obj cooked_meshes=1 summary_meshes=1
+```
+
+## Source
+
+<ExampleSource example="cache-roundtrip" />
+
+## Related Reading
+
+- [Runtime Cache](../../runtime-cache/)
+- [cache Package](../../cache-package/)
+- [Quick Start](../../quick-start/)
+- [View full example on GitHub](https://github.com/gophics/ravenporter/tree/master/examples/cache-roundtrip)

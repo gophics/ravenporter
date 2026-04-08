@@ -1,0 +1,22 @@
+---
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+interface Item {
+  title: string;
+  body: string;
+}
+
+interface Props {
+  items: Item[];
+}
+
+const { items } = Astro.props;
+---
+
+<div class="not-content" data-pagefind-ignore>
+  <CardGrid stagger={items.length > 2}>
+    {items.map((item) => (
+      <Card title={item.title}>{item.body}</Card>
+    ))}
+  </CardGrid>
+</div>

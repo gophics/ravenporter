@@ -53,8 +53,16 @@ Desktop.ini
 /bin/
 /coverage/
 /go-draco/
-/.gocache/
+/.astro/
+/.gocache*/
 /testsuite/.gocache/
 /.gomodcache/
 /.golangci-cache/
+/.golangci-lint-cache/
+/node_modules/
 /.agent/
+
+# Docs
+/docs/node_modules/
+/docs/dist/
+/docs/.astro/

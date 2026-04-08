@@ -1,0 +1,58 @@
+name: docs
+
+on:
+  push:
+    paths:
+      - ".github/workflows/docs.yml"
+      - ".github/workflows/deploy-docs.yml"
+      - "docs/**"
+      - "examples/**"
+  pull_request:
+    paths:
+      - ".github/workflows/docs.yml"
+      - ".github/workflows/deploy-docs.yml"
+      - "docs/**"
+      - "examples/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCS_SITE_URL: https://${{ github.repository_owner }}.github.io
+  DOCS_BASE_PATH: /${{ github.event.repository.name }}
+
+jobs:
+  build:
+    name: verify docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: docs
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: docs/package.json
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install docs dependencies
+        run: npm ci
+
+      - name: Run Astro check
+        run: npm run check
+
+      - name: Build docs
+        run: npm run build

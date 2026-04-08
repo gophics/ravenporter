@@ -1,0 +1,65 @@
+---
+title: RavenPorter Docs
+description: English documentation for RavenPorter, its public API, CLI workflows, cache format, and internal IR model.
+template: splash
+pagefind: false
+hero:
+  title: RavenPorter
+  tagline: Pure-Go asset ingest, runtime cooking, and a flat IR for models, images, audio, and fonts.
+  image:
+    light: ../../assets/logo-light.svg
+    dark: ../../assets/logo-dark.svg
+    alt: RavenPorter logo
+  actions:
+    - text: Quick Start
+      link: ./quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: API Reference
+      link: ./ravenporter-package/
+      icon: open-book
+      variant: secondary
+    - text: GitHub
+      link: https://github.com/gophics/ravenporter
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+RavenPorter gives Go applications one place to import, inspect, validate, and cook source assets before they ever reach runtime. Start with the job in front of you, then move from guides to examples to reference as your integration gets deeper.
+
+## Start Here
+
+<CardGrid>
+  <LinkCard title="Import One Asset" href="./quick-start/" description="Start with a single file, a preset, and the first useful report fields." />
+  <LinkCard title="Run a Full Workflow" href="./examples/asset-pipeline/" description="Follow one realistic example that ties together profiles, batch import, validation, JSON export, and cache cooking." />
+  <LinkCard title="Understand the Design" href="./why-ravenporter/" description="Read the reasoning behind the pure-Go approach, the shared IR, and the stricter cache model." />
+</CardGrid>
+
+## Choose A Surface
+
+<CardGrid>
+  <LinkCard title="Overview" href="./overview/" description="Get the shape of the library, CLI, cache package, and IR before you dive into details." />
+  <LinkCard title="Library Guides" href="./import-workflows/" description="Read the narrative docs for import entrypoints, presets, reports, cache cooking, emitters, and extension points." />
+  <LinkCard title="Examples" href="./examples/" description="Open the runnable Go programs when you want complete workflows instead of isolated API calls." />
+  <LinkCard title="CLI Guide" href="./cli-guide/" description="Use the same pipeline vocabulary from the shell when you are inspecting or cooking assets outside application code." />
+  <LinkCard title="IR And Architecture" href="./import-pipeline-architecture/" description="Understand how source data moves through detection, decode, normalization, validation, and runtime packaging." />
+  <LinkCard title="Package Reference" href="./ravenporter-package/" description="Jump straight to the exported packages and entrypoints if you already know what you need." />
+</CardGrid>
+
+## What Stays Consistent
+
+<CardGrid stagger>
+  <Card title="One Import Vocabulary">
+    The Go API and the CLI describe the same pipeline, so scripts, tools, and embedded integrations do not drift apart.
+  </Card>
+  <Card title="One Internal Representation">
+    Models, images, audio, and fonts all land in the same [`ir.Asset`](./ir-overview/), which keeps inspection and downstream tooling consistent.
+  </Card>
+  <Card title="One Runtime Packaging Story">
+    Use [`cache`](./runtime-cache/) once startup time matters more than reparsing source assets on every launch.
+  </Card>
+</CardGrid>
+
+If you are integrating today, start with [Quick Start](./quick-start/). If you are evaluating the library, read [Why RavenPorter](./why-ravenporter/) and [Overview](./overview/) first.

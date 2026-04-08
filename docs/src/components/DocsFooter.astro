@@ -1,0 +1,229 @@
+---
+import DefaultFooter from "@astrojs/starlight/components/Footer.astro";
+---
+
+<DefaultFooter>
+  <slot />
+</DefaultFooter>
+
+<dialog
+  class="diagram-lightbox"
+  data-diagram-lightbox
+  aria-labelledby="diagram-lightbox-title"
+>
+  <div class="diagram-lightbox__frame">
+    <div class="diagram-lightbox__header">
+      <h2 id="diagram-lightbox-title" class="diagram-lightbox__title">Diagram</h2>
+      <button type="button" class="diagram-lightbox__close" data-diagram-lightbox-close aria-label="Close diagram">
+        Close
+      </button>
+    </div>
+    <div class="diagram-lightbox__body" data-diagram-lightbox-body></div>
+  </div>
+</dialog>
+
+<script is:inline>
+  (() => {
+    const init = () => {
+      const dialog = document.querySelector("[data-diagram-lightbox]");
+      const body = dialog?.querySelector("[data-diagram-lightbox-body]");
+      const close = dialog?.querySelector("[data-diagram-lightbox-close]");
+      if (!(dialog instanceof HTMLDialogElement) || !(body instanceof HTMLElement) || !(close instanceof HTMLElement)) {
+        return;
+      }
+      if (dialog.dataset.diagramLightboxReady === "true") {
+        return;
+      }
+      dialog.dataset.diagramLightboxReady = "true";
+
+      const openLightbox = (source) => {
+        body.replaceChildren();
+        const clone = source.cloneNode(true);
+        clone.classList.add("diagram-lightbox__diagram");
+        clone.removeAttribute("tabindex");
+        clone.removeAttribute("role");
+        clone.removeAttribute("aria-label");
+        body.appendChild(clone);
+        dialog.showModal();
+      };
+
+      const enhance = (root = document) => {
+        root.querySelectorAll(".mermaid").forEach((diagram) => {
+          if (!(diagram instanceof HTMLElement) || diagram.dataset.diagramEnhanced === "true") {
+            return;
+          }
+
+          diagram.dataset.diagramEnhanced = "true";
+          diagram.tabIndex = 0;
+          diagram.setAttribute("role", "button");
+          diagram.setAttribute("aria-label", "Open diagram in a larger view");
+          diagram.classList.add("mermaid--interactive");
+
+          diagram.addEventListener("click", () => openLightbox(diagram));
+          diagram.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openLightbox(diagram);
+            }
+          });
+        });
+      };
+
+      close.addEventListener("click", () => dialog.close());
+      dialog.addEventListener("click", (event) => {
+        const frame = dialog.querySelector(".diagram-lightbox__frame");
+        if (frame instanceof HTMLElement && !frame.contains(event.target)) {
+          dialog.close();
+        }
+      });
+      dialog.addEventListener("close", () => body.replaceChildren());
+
+      enhance();
+
+      const observer = new MutationObserver(() => enhance());
+      observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init, { once: true });
+    } else {
+      init();
+    }
+  })();
+</script>
+
+<style is:global>
+  .sl-markdown-content :is(.mermaid, pre.mermaid) {
+    padding: 1rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--sl-color-bg-nav) 94%, transparent);
+    overflow-x: auto;
+  }
+
+  .mermaid--interactive {
+    position: relative;
+    cursor: zoom-in;
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+
+  .mermaid--interactive::after {
+    content: "Click to enlarge";
+    position: absolute;
+    right: 0.8rem;
+    bottom: 0.8rem;
+    padding: 0.22rem 0.5rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--sl-color-bg) 90%, transparent);
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--sl-color-text-2);
+  }
+
+  .mermaid--interactive:hover,
+  .mermaid--interactive:focus-visible {
+    border-color: color-mix(in srgb, var(--sl-color-accent-high) 36%, var(--sl-color-hairline));
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    transform: translateY(-1px);
+    outline: 0;
+  }
+
+  .diagram-lightbox {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    width: min(94vw, 84rem);
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 1.15rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+    transform: translate(-50%, -50%);
+  }
+
+  .diagram-lightbox::backdrop {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(6px);
+  }
+
+  .diagram-lightbox__frame {
+    display: grid;
+    max-height: 88vh;
+  }
+
+  .diagram-lightbox__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid var(--sl-color-hairline);
+  }
+
+  .diagram-lightbox__title {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sl-color-text-2);
+  }
+
+  .diagram-lightbox__close {
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--sl-color-bg-nav) 94%, transparent);
+    font: inherit;
+    font-weight: 700;
+    color: var(--sl-color-text);
+    cursor: pointer;
+  }
+
+  .diagram-lightbox__body {
+    overflow: auto;
+    padding: 1rem;
+  }
+
+  .diagram-lightbox__diagram {
+    min-width: min(72rem, calc(100vw - 8rem));
+    margin: 0;
+    box-shadow: none;
+  }
+
+  .diagram-lightbox__diagram::after {
+    display: none;
+  }
+
+  .diagram-lightbox__diagram svg {
+    width: 100%;
+    height: auto;
+    max-width: none;
+  }
+
+  @media (max-width: 50rem) {
+    .diagram-lightbox {
+      width: 96vw;
+      border-radius: 1rem;
+    }
+
+    .diagram-lightbox__header {
+      padding: 0.85rem 0.85rem 0.7rem;
+    }
+
+    .diagram-lightbox__body {
+      padding: 0.85rem;
+    }
+
+    .diagram-lightbox__diagram {
+      min-width: 42rem;
+    }
+  }
+</style>

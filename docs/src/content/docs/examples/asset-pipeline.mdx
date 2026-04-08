@@ -1,0 +1,46 @@
+---
+title: Asset Pipeline Example
+description: Run a fuller workflow with a reusable profile, batch import, validation, JSON export, and cache cooking.
+---
+
+import ExampleSource from "../../../components/ExampleSource.astro";
+
+If you want one example that ties the main library surfaces together, start here. It builds a small asset tree, loads a reusable profile, imports the batch, validates each result, exports JSON IR, and cooks a cache payload for every asset.
+
+## Key APIs
+
+- `ravenporter.ResolveProfile()`
+- `ravenporter.SaveProfile()`
+- `ravenporter.LoadProfile()`
+- `ravenporter.ImportDir()`
+- `validate.Asset()`
+- `emit/json.WriteTo()`
+- `cache.Write()`
+- `cache.Read()`
+
+## Run
+
+```bash
+go run ./examples/asset-pipeline
+```
+
+## Expected Output
+
+```text
+profile preset=quality scale=1.5 assets=2
+  characters/hero.obj format=obj meshes=1 issues=0 validation_errors=0 validation_warnings=0 json_meshes=1 cache_meshes=1
+  props/crate.obj format=obj meshes=1 issues=0 validation_errors=0 validation_warnings=0 json_meshes=1 cache_meshes=1
+```
+
+## Source
+
+<ExampleSource example="asset-pipeline" />
+
+## Related Reading
+
+- [Profiles and Presets](../../profiles-and-presets/)
+- [Import Workflows](../../import-workflows/)
+- [Reports and Validation](../../reports-and-validation/)
+- [JSON IR and Emitters](../../json-ir-and-emitters/)
+- [Runtime Cache](../../runtime-cache/)
+- [View full example on GitHub](https://github.com/gophics/ravenporter/tree/master/examples/asset-pipeline)

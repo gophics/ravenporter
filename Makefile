@@ -1,7 +1,8 @@
-.PHONY: build test test-race test-race-core test-cover test-integration test-integration-race test-all release-check lint bench bench-integration fuzz vet clean ci
+.PHONY: build test test-race test-race-core test-cover test-integration test-integration-race test-all release-check lint bench bench-integration fuzz vet clean docs-check docs-build run-docs
 
 ROOT_GOCACHE := $(CURDIR)/.gocache
 TESTSUITE_GOCACHE := $(CURDIR)/testsuite/.gocache
+ROOT_GOLANGCI_LINT_CACHE := $(CURDIR)/.golangci-lint-cache
 
 build:
 	set "GOCACHE=$(ROOT_GOCACHE)" && go build ./...
@@ -27,13 +28,13 @@ test-integration-race:
 
 test-all: test test-integration
 
-release-check: lint vet test test-integration test-race-core
+release-check: lint vet test test-integration test-race-core docs-check docs-build
 
 vet:
 	set "GOCACHE=$(ROOT_GOCACHE)" && go vet ./...
 
 lint:
-	golangci-lint run
+	set "GOCACHE=$(ROOT_GOCACHE)" && set "GOLANGCI_LINT_CACHE=$(ROOT_GOLANGCI_LINT_CACHE)" && golangci-lint run
 
 bench:
 	set "GOCACHE=$(ROOT_GOCACHE)" && go test -bench=. -benchmem -run=^$$ ./...
@@ -51,7 +52,11 @@ clean:
 	go clean
 	rm -f coverage.txt coverage.html
 
-ci:
-	set "GOCACHE=$(ROOT_GOCACHE)" && go vet ./...
-	set "GOCACHE=$(ROOT_GOCACHE)" && go test ./... -count=1
-	cd testsuite && set "GOCACHE=$(TESTSUITE_GOCACHE)" && go test -tags integration ./... -count=1
+docs-check:
+	$(MAKE) -C docs check
+
+docs-build:
+	$(MAKE) -C docs build
+
+run-docs:
+	$(MAKE) -C docs run

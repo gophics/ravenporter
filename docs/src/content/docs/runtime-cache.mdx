@@ -1,0 +1,155 @@
+---
+title: Runtime Cache
+description: Cook imported assets into RavenPorter cache files and understand lazy media, eager reads, pixel persistence, and validation rules.
+---
+
+import PageLead from "../../components/PageLead.astro";
+import SignalGrid from "../../components/SignalGrid.astro";
+import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+<PageLead
+  summary="The cache package turns an imported result into a tighter runtime artifact so startup paths can skip reparsing source formats."
+  points={[
+    "Cook after import when you want a self-contained runtime asset.",
+    "Scene data loads eagerly; heavier media stays lazy by default.",
+    "A cache write failure usually means the asset is not runtime-safe yet.",
+  ]}
+/>
+
+<SignalGrid
+  items={[
+    {
+      title: "Write once",
+      body: "Serialize the imported result into a RavenPorter-owned container meant for fast runtime reloads.",
+    },
+    {
+      title: "Open flexibly",
+      body: "Read from disk, an fs.FS, or an existing io.ReaderAt depending on where the cooked bytes live.",
+    },
+    {
+      title: "Keep media lazy",
+      body: "Large image, audio, and font blobs stay reader-backed until you ask RavenPorter to materialize them.",
+    },
+    {
+      title: "Validate early",
+      body: "The write path rejects runtime-critical issues instead of hiding them inside a half-usable artifact.",
+    },
+  ]}
+/>
+
+<Aside type="caution" title="Cook only self-contained runtime assets">
+  cache.Write() rejects external texture references. If you need a single-file runtime package, import with WithEmbedTextures() before cooking.
+</Aside>
+
+## Write A Cache File
+
+```go
+package main
+
+import (
+	"bytes"
+	"context"
+	"log"
+
+	"github.com/gophics/ravenporter"
+	"github.com/gophics/ravenporter/cache"
+)
+
+func main() {
+	result, err := ravenporter.ImportPath(
+		context.Background(),
+		"assets/scene.glb",
+		ravenporter.WithEmbedTextures(),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var cooked bytes.Buffer
+	if err := cache.Write(&cooked, result); err != nil {
+		log.Fatal(err)
+	}
+
+	pkg, err := cache.Read(bytes.NewReader(cooked.Bytes()), int64(cooked.Len()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pkg.Close()
+}
+```
+
+## Reading
+
+| Function | Best fit |
+| --- | --- |
+| `cache.Open(path, options...)` | The cooked asset lives on disk |
+| `cache.OpenFS(fsys, path, options...)` | The cooked asset lives inside an `fs.FS` |
+| `cache.Read(readerAt, size, options...)` | You already have an `io.ReaderAt` and the asset size |
+
+Call `(*cache.Asset).Close()` when you open a lazy reader-backed cache asset.
+
+## Lazy Media Model
+
+By default:
+
+- `MANF` and `SCEN` data are loaded eagerly.
+- `BLOB` payloads for images, audio, and vector-font raw bytes stay reader-backed.
+- `DecodePixels()` and `DecodeSamples()` still work after opening a cooked asset because the cache layer restores decode callbacks for supported formats.
+
+Use `cache.WithEagerMedia()` if you want all embedded media materialized during `Open()` or `Read()`.
+
+## Write Options
+
+| Option | Purpose |
+| --- | --- |
+| `cache.WithImagePixels(mode)` | Control when decoded image pixels are baked into the cache |
+| `cache.WithMaxEmbeddedMediaBytes(limit)` | Reject oversized cooked assets |
+
+Supported pixel modes:
+
+- `cache.ImagePixelsNever`
+- `cache.ImagePixelsIfPresent`
+- `cache.ImagePixelsAlways`
+
+## Strict Validation
+
+`cache.Write()` validates the import result before serialization.
+
+It will reject assets when:
+
+- the `Result` or `Asset` is `nil`
+- a texture still points at an external image file path
+- a material contains unsupported arbitrary property types
+
+For single-file runtime packages, use `WithEmbedTextures()` during import so texture dependencies are embedded before cooking.
+
+## Cache Manifest
+
+Each cooked file includes a manifest with:
+
+- cache format version
+- source format
+- source profile
+- dependencies
+- provenance notes
+- asset summary counts
+
+See [Cache Format Model](../cache-format-model/) for the container layout and chunk model.
+
+<CardGrid>
+  <LinkCard
+    title="cache Package"
+    href="../cache-package/"
+    description="Open the API reference if you want the exported cache surface directly."
+  />
+  <LinkCard
+    title="Cache Format Model"
+    href="../cache-format-model/"
+    description="Read the internal container layout if you need chunk-level detail."
+  />
+  <LinkCard
+    title="Reports and Validation"
+    href="../reports-and-validation/"
+    description="Review how import issues and dependencies are collected before anything is cooked."
+  />
+</CardGrid>

@@ -1,0 +1,190 @@
+---
+title: CLI Guide
+description: Install and use the RavenPorter CLI for inspection, validation, JSON IR export, conversion, profiles, and runtime cache cooking.
+---
+
+import PageLead from "../../components/PageLead.astro";
+import SignalGrid from "../../components/SignalGrid.astro";
+import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+<PageLead
+  summary="The RavenPorter CLI uses the same vocabulary as the Go API, so presets, profiles, process steps, and cache options carry over cleanly into shell workflows."
+  points={[
+    "info and inspect are the fastest way to see what RavenPorter found.",
+    "import, export, and convert cover the JSON IR and emitter workflows.",
+    "cook is the command that produces a runtime-ready rpcache artifact.",
+  ]}
+/>
+
+<SignalGrid
+  items={[
+    {
+      title: "Inspect",
+      body: "info and inspect give you a quick operational view of either a source asset or a cooked cache.",
+    },
+    {
+      title: "Validate",
+      body: "validate runs the checks directly, without asking you to write a custom Go entrypoint first.",
+    },
+    {
+      title: "Cook",
+      body: "cook lets RavenPorter import and serialize a runtime artifact in one step.",
+    },
+    {
+      title: "Batch",
+      body: "batch walks a directory tree and produces consistent output for many supported files.",
+    },
+  ]}
+/>
+
+<Aside type="tip" title="Same terms, same behavior">
+  If you already know the Go API, most CLI flags will feel familiar. Presets, profile files, process step names, and cache options map back to the same public surface.
+</Aside>
+
+## Install
+
+Requires Go `1.25.7` or newer.
+
+```bash
+go install github.com/gophics/ravenporter/cmd/ravenporter@v0.1.0
+```
+
+## Main Commands
+
+| Command | Purpose |
+| --- | --- |
+| `import` | Import source assets and emit JSON IR |
+| `export` | Export one asset to a target emitter format |
+| `batch` | Walk a directory and emit JSON IR for supported files |
+| `convert` | Shorthand for import plus export, with the output format inferred from `--out` |
+| `cook` | Import and write a `.rpcache` runtime asset |
+| `info` | Print high-level asset information |
+| `inspect` | Print a deeper asset breakdown |
+| `validate` | Run direct validation on source assets |
+| `formats` | List built-in import formats |
+| `steps` | List canonical process-step names |
+| `profile export` | Save the effective import config as TOML |
+
+## Common Workflows
+
+### Import To JSON IR
+
+```bash
+ravenporter import assets/scene.glb --out out --pretty
+```
+
+### Export JSON Explicitly
+
+```bash
+ravenporter export assets/scene.glb --format json --out out/scene.json --pretty
+```
+
+### Convert Using The Output Extension
+
+```bash
+ravenporter convert assets/scene.glb --out out/scene.json --pretty
+```
+
+`convert` uses the same emitter path as `export`, but it infers the format from `--out` instead of taking `--format` directly. Today that still means JSON.
+
+### Cook A Runtime Cache
+
+```bash
+ravenporter cook assets/scene.glb --out build/scene.rpcache --embed-textures
+```
+
+### Inspect An Asset
+
+```bash
+ravenporter info assets/scene.glb
+ravenporter inspect assets/scene.glb
+```
+
+`info` and `inspect` both work on cooked `.rpcache` files. Use `info --json` for a compact scripted summary, or `inspect --json` when you want the full asset payload.
+
+### Validate A Source Asset
+
+```bash
+ravenporter validate assets/scene.glb
+ravenporter validate assets/scene.glb --json
+```
+
+`validate` currently runs mesh, node, material, texture-reference, and animation-oriented checks, so it is most informative on scene and model assets.
+
+### Batch A Directory
+
+```bash
+ravenporter batch assets --out out --pretty --recursive
+```
+
+`batch` stays at the top level unless you pass `--recursive`.
+
+## Profiles
+
+Export a reusable TOML profile:
+
+```bash
+ravenporter profile export --preset quality --embed-textures --scale 0.01 --out profiles/game.toml
+```
+
+Reuse it on a later command:
+
+```bash
+ravenporter import assets/scene.fbx --profile-file profiles/game.toml --out out
+```
+
+Explicit flags are assembled after `--profile-file`, so direct flags override the loaded profile.
+
+## Process Step Overrides
+
+List the canonical step names:
+
+```bash
+ravenporter steps
+```
+
+Enable or disable them directly:
+
+```bash
+ravenporter cook assets/scene.glb --enable-step embed-textures --disable-step find-instances
+```
+
+## Useful Flags
+
+- `--preset fast|quality|max-quality`
+- `--profile-file path/to/profile.toml`
+- `--embed-textures`
+- `--scale 0.01`
+- `--up-axis Y|Z`
+- `--decode-max-file-size`
+- `--decode-max-vertices`
+- `--enable-step`
+- `--disable-step`
+- `--report-file`
+- `--cache-image-pixels never|if-present|always`
+- `--cache-max-embedded-media-bytes`
+
+## Command Mapping Back To The Library
+
+- `import`, `export`, `batch`, and `convert` all start from the root import API.
+- `cook` adds [`cache.Write()`](../cache-package/) after import.
+- `validate` uses [`detect`](../detect-package/) and [`validate`](../validate-package/) directly on source assets, with the current rule set focused on scene and model content.
+- `profile export` uses [`ResolveProfile()`](../profiles-and-presets/).
+
+<CardGrid>
+  <LinkCard
+    title="Quick Start"
+    href="../quick-start/"
+    description="Switch to the library path if you want the same workflow embedded in a Go application."
+  />
+  <LinkCard
+    title="Profiles and Presets"
+    href="../profiles-and-presets/"
+    description="Keep this nearby if you want repeatable behavior across the CLI and the Go API."
+  />
+  <LinkCard
+    title="Runtime Cache"
+    href="../runtime-cache/"
+    description="Go deeper on cache cooking, read behavior, and the stricter runtime rules."
+  />
+</CardGrid>

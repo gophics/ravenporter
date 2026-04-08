@@ -1,0 +1,140 @@
+---
+title: Why RavenPorter
+description: "Design rationale for RavenPorter: why it is pure Go, why it imports many formats into one IR, and how it differs from adjacent tools."
+---
+
+import PageLead from "../../components/PageLead.astro";
+import SignalGrid from "../../components/SignalGrid.astro";
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+<PageLead
+  summary="RavenPorter is built for Go-native tooling, one IR across asset domains, and strict runtime cooking rather than source-faithful archival."
+  points={[
+    "Pure Go keeps builds, CI, and deployment simpler than a cgo-heavy importer stack.",
+    "One IR makes reporting, validation, processing, and cache cooking consistent across formats.",
+    "The runtime cache is strict on purpose so broken runtime assets fail early instead of slipping through quietly.",
+  ]}
+/>
+
+<SignalGrid
+  items={[
+    {
+      title: "Why Go",
+      body: "The project is meant to embed naturally in Go-based pipelines, services, CLIs, and tests without dragging in a foreign build chain.",
+    },
+    {
+      title: "Why one IR",
+      body: "A shared representation keeps the rest of the pipeline format-agnostic and avoids one-off tooling for each asset domain.",
+    },
+    {
+      title: "Why strict cooking",
+      body: "The cache favors a clear runtime contract over best-effort packaging of half-materialized assets.",
+    },
+    {
+      title: "Who it is for",
+      body: "RavenPorter fits teams that want an engine-agnostic ingestion layer, not a full authoring or round-trip editing system.",
+    },
+  ]}
+/>
+
+RavenPorter is not trying to be an engine, a DCC scene editor, or a source-of-truth authoring format. It exists to solve a narrower problem well: ingest heterogeneous asset files into one runtime-oriented model that Go applications can inspect, validate, transform, and cook.
+
+## Why Build This In Go
+
+The first design choice is the language itself.
+
+- RavenPorter is meant to drop into Go-based tools, build systems, services, and content pipelines without adding a C or C++ dependency chain.
+- Staying pure Go keeps builds, cross-compilation, CI, and deployment simpler than a `cgo`-heavy importer stack.
+- A Go-native library is easier to embed in command-line tools, asset servers, test suites, and custom pipeline executables that are already written in Go.
+- The project can keep the public API small and idiomatic instead of wrapping a large foreign API surface.
+
+This choice favors operational simplicity over reusing an existing native importer wholesale.
+
+## Why One IR For Many Formats
+
+RavenPorter supports models, images, audio, and fonts because real asset pipelines rarely stay in one domain.
+
+- A single import result means callers learn one `Result`, one `Report`, and one `ir.Asset` shape instead of separate APIs per domain.
+- Cross-format tooling becomes simpler. Validation, reporting, dependency tracking, cache cooking, and JSON inspection can operate on one representation.
+- Format-specific decoders stay behind the boundary while the rest of the pipeline stays format-agnostic.
+- A shared IR avoids building one-off conversion paths between every pair of source formats.
+
+The important implication is that the IR is not source-faithful in the archival sense. It is designed to preserve the information RavenPorter needs for downstream tooling and runtime cooking, not to mirror every source format feature one-to-one.
+
+## Why The IR Is Flat And Runtime-Oriented
+
+`ir.Asset` is intentionally a flat container of slices plus integer cross-references.
+
+- Flat arrays are easy to traverse, serialize, diff, validate, and cache.
+- Integer indices are straightforward to store in cooked artifacts and easy to remap during processing.
+- The same representation works well for import reports, JSON inspection, runtime packaging, and tests.
+- Scene relationships still exist, but they are expressed explicitly through node indices, parent links, child lists, and scene root arrays instead of deep object graphs.
+
+This is a better fit for runtime preparation and batch tooling than a deeply nested, format-shaped object model.
+
+## Why Support Many Formats Behind One Entry Surface
+
+The public API is centered on the root [`ravenporter`](../ravenporter-package/) package on purpose.
+
+- Callers should not need to know which decoder package owns a given extension before they can import a file.
+- Teams often have mixed corpora: glTF scenes, texture payloads, audio clips, UI fonts, and legacy interchange formats in the same repository.
+- One entry surface makes directory imports, batch validation, and profile-based cooking practical.
+- Lower-level hooks still exist in [`detect`](../detect-package/) and [`process`](../process-package/) when a pipeline needs custom behavior.
+
+From the outside, RavenPorter tries to stay convenient. Inside, it keeps the moving parts explicit.
+
+## Why The Cache Format Is Strict
+
+The cooked cache is meant for runtime consumption, not as a loose archival dump.
+
+- `cache.Write()` failing on unresolved runtime-critical dependencies is a feature, not an inconvenience.
+- The cache format rewards producing self-consistent runtime assets instead of shipping half-materialized packages and discovering missing data at load time.
+- Eager scene data plus lazy heavy media lets RavenPorter target fast startup without forcing every image or audio blob into memory immediately.
+
+That strictness keeps the runtime contract clearer than "best effort" cooking.
+
+## Similar Libraries And Adjacent Tools
+
+RavenPorter sits near several other tool categories, but it makes different tradeoffs.
+
+- Native multi-format importers such as Assimp are the closest conceptual relatives: they ingest many 3D formats through one API. RavenPorter differs by being pure Go and by treating cache cooking, reports, and multi-domain assets as first-class concerns.
+- Single-format loaders are a better fit when you only care about one ecosystem. If your pipeline is exclusively glTF, for example, a dedicated glTF reader may be simpler than a generalized importer.
+- Engine-native import pipelines are often the right answer when the engine owns both authoring import and runtime representation. RavenPorter is more useful when you want an engine-agnostic preprocessing step or a standalone asset pipeline.
+- Format-specific image, audio, or font decoders are still valuable internally, but they do not solve the "one import surface, one IR, one report model" problem by themselves.
+
+It makes more sense to think of RavenPorter as a pipeline-oriented ingestion layer than as a replacement for every specialized decoder or engine importer.
+
+## Tradeoffs
+
+These design choices are deliberate, and they come with limits.
+
+- RavenPorter prefers a normalized runtime-oriented model over perfect preservation of every source-file detail.
+- Some source-format features stay unsupported when they do not fit the current runtime model or maintenance budget.
+- If your main goal is editing, round-tripping, or preserving authoring metadata exactly as stored in the source file, RavenPorter is probably not the right central abstraction.
+
+## When This Design Makes Sense
+
+This design tends to work well when you need:
+
+- Go-native asset ingestion in build or tooling environments
+- one import API across asset domains
+- a stable internal representation for validation and processing
+- a strict cooked runtime artifact for faster load paths
+
+<CardGrid>
+  <LinkCard
+    title="Overview"
+    href="../overview/"
+    description="Return to the practical overview if you want the main layers and workflows without the design discussion."
+  />
+  <LinkCard
+    title="Quick Start"
+    href="../quick-start/"
+    description="Jump into the code if the design tradeoffs already line up with what you need."
+  />
+  <LinkCard
+    title="IR Overview"
+    href="../ir-overview/"
+    description="Read the representation guide next if you want to see how those design choices show up in code."
+  />
+</CardGrid>

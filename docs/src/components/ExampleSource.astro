@@ -1,0 +1,48 @@
+---
+import { Code } from "@astrojs/starlight/components";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+interface Props {
+  example: string;
+  file?: string;
+  lang?: string;
+  title?: string;
+}
+
+const {
+  example,
+  file = "main.go",
+  lang = "go",
+  title,
+} = Astro.props as Props;
+
+if (!example) {
+  throw new Error("ExampleSource requires an example name.");
+}
+
+const examplesRoot = path.resolve(process.cwd(), "..", "examples");
+const relativeExample = example.replaceAll("\\", "/");
+
+if (relativeExample.includes("..")) {
+  throw new Error(`ExampleSource does not allow parent segments: ${example}`);
+}
+
+const filePath = path.resolve(examplesRoot, relativeExample, file);
+const relativePath = path.relative(examplesRoot, filePath);
+
+if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+  throw new Error(`ExampleSource path escapes examples/: ${filePath}`);
+}
+
+const code = readFileSync(filePath, "utf8");
+const codeTitle =
+  title ??
+  path.posix.join(
+    "examples",
+    relativeExample,
+    file.replaceAll("\\", "/"),
+  );
+---
+
+<Code code={code} lang={lang} title={codeTitle} />

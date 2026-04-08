@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -99,6 +100,20 @@ func TestSingleInputCommandsRejectExtraArgs(t *testing.T) {
 			require.Contains(t, err.Error(), "expected exactly 1 argument")
 		})
 	}
+}
+
+func TestFormatsCommandDeduplicatesEquivalentRegistrations(t *testing.T) {
+	app := &cli.App{
+		Commands: []*cli.Command{formatsCmd()},
+	}
+
+	stdout, err := captureStdout(t, func() error {
+		return app.Run([]string{"app", "formats"})
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, strings.Count(stdout, "glTF 2.0"))
+	require.Contains(t, stdout, ".glb")
+	require.Contains(t, stdout, ".gltf")
 }
 
 func captureStdout(t *testing.T, fn func() error) (string, error) {
