@@ -1,0 +1,123 @@
+---
+title: Quick Start
+description: Import a source asset with the root package, inspect the returned Result, and choose a built-in preset.
+---
+
+import PageLead from "../../components/PageLead.astro";
+import SignalGrid from "../../components/SignalGrid.astro";
+import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+<PageLead
+  summary="This is the shortest path from a source file to a real import result, a useful report, and a sensible preset choice."
+  points={[
+    "Stay in the root package unless you already know you need lower-level hooks.",
+    "Check both the error and the result on return.",
+    "Presets are a starting point, not a cage.",
+  ]}
+/>
+
+<SignalGrid
+  items={[
+    {
+      title: "Import one file",
+      body: "ImportPath() is the quickest way from a source asset to RavenPorter's IR.",
+    },
+    {
+      title: "Inspect the result",
+      body: "Look at both the imported asset and the structured report so you can see what loaded and what RavenPorter learned along the way.",
+    },
+    {
+      title: "Choose a preset",
+      body: "Begin with a built-in preset, then add explicit options only where your pipeline genuinely differs.",
+    },
+  ]}
+/>
+
+<Aside type="tip" title="Toolchain">
+  RavenPorter currently requires Go `1.25.7` or newer. If you are building the docs site locally too, use Node.js `22.12.0` or newer.
+</Aside>
+
+## Import A File
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/gophics/ravenporter"
+)
+
+func main() {
+	result, err := ravenporter.ImportPath(
+		context.Background(),
+		"assets/scene.glb",
+		ravenporter.WithPreset(ravenporter.BuiltInPresetQuality),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf(
+		"format=%s scenes=%d meshes=%d",
+		result.Report.Source.DetectedFormat,
+		len(result.Asset.Scenes),
+		len(result.Asset.Meshes),
+	)
+}
+```
+
+## What You Get Back
+
+`ImportPath()` returns `*ravenporter.Result`.
+
+<Aside type="note" title="Check both return values">
+  `err` tells you whether the import fully succeeded. If `result` is non-nil, keep the report anyway: it may still contain detected format, dependencies, or validation context that helps debugging.
+</Aside>
+
+| Field | Meaning |
+| --- | --- |
+| `Result.Asset` | The imported [`ir.Asset`](../ir-overview/) |
+| `Result.Report.Source` | Input name, detected format, effective options, source metadata, and provenance notes |
+| `Result.Report.Issues` | Stable issues grouped by pipeline stage and severity |
+| `Result.Report.Dependencies` | Direct external dependencies discovered during import |
+| `Result.Report.Summary` | High-level counts for scenes, meshes, materials, images, audio, fonts, and more |
+
+## Choosing A Preset
+
+RavenPorter ships three built-in preset names:
+
+- `fast`
+- `quality`
+- `max-quality`
+
+Use them through:
+
+```go
+ravenporter.WithPreset(ravenporter.BuiltInPresetFast)
+ravenporter.WithPreset(ravenporter.BuiltInPresetQuality)
+ravenporter.WithPreset(ravenporter.BuiltInPresetMaxQuality)
+```
+
+The preset sets the initial process-step mask. You can then layer explicit overrides on top of it with options such as `WithGlobalScale()`, `WithTargetUpAxis()`, `WithEmbedTextures()`, or a merged [`Profile`](../profiles-and-presets/).
+
+## Next Steps
+
+<CardGrid>
+  <LinkCard
+    title="Import Workflows"
+    href="../import-workflows/"
+    description="Continue here for ImportFS(), ImportReader(), ImportBytes(), and directory imports."
+  />
+  <LinkCard
+    title="Reports and Validation"
+    href="../reports-and-validation/"
+    description="Open this if you want to make sense of warnings, errors, and stage-specific issues."
+  />
+  <LinkCard
+    title="Runtime Cache"
+    href="../runtime-cache/"
+    description="Head here when you want to turn imported assets into runtime-ready rpcache files."
+  />
+</CardGrid>

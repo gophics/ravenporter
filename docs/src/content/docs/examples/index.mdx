@@ -1,0 +1,66 @@
+---
+title: Examples
+description: Runnable RavenPorter examples for the most common library workflows.
+---
+
+import PageLead from "../../../components/PageLead.astro";
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+<PageLead
+  summary="These pages render the real example programs from the repository, so the docs stay aligned with the code you can actually run."
+  points={[
+    "Start with the example that matches the job in front of you.",
+    "Each one builds its own tiny input data and runs from a clean checkout.",
+    "The source shown here is loaded from examples/ at build time.",
+  ]}
+/>
+
+## Start Here
+
+<CardGrid>
+  <LinkCard
+    title="Quickstart Import"
+    href="./quickstart-import/"
+    description="Start with a local file, a preset, and a few report fields."
+  />
+  <LinkCard
+    title="Cache Roundtrip"
+    href="./cache-roundtrip/"
+    description="Cook a runtime cache and open it again through the public cache package."
+  />
+  <LinkCard
+    title="Asset Pipeline"
+    href="./asset-pipeline/"
+    description="Use this if you want one fuller example that ties the major library surfaces together."
+  />
+</CardGrid>
+
+## Input And Integration
+
+<CardGrid>
+  <LinkCard
+    title="Input Sources"
+    href="./input-sources/"
+    description="Use the same import flow with os.DirFS, raw bytes, and a reader."
+  />
+  <LinkCard
+    title="Batch Import"
+    href="./batch-import/"
+    description="Import a small asset tree from disk and from an fs.FS view of the same tree."
+  />
+  <LinkCard
+    title="Profiles And Overrides"
+    href="./profiles-and-overrides/"
+    description="Save a profile, load it back, override one setting, and import with it."
+  />
+</CardGrid>
+
+## Inspection And Export
+
+<CardGrid>
+  <LinkCard
+    title="Inspect And Export"
+    href="./inspect-and-export/"
+    description="Check the import report, run validation directly, and export JSON IR."
+  />
+</CardGrid>

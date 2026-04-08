@@ -1,0 +1,43 @@
+---
+title: Batch Import Example
+description: Import many supported assets from a local directory and from an fs.FS view of the same tree.
+---
+
+import ExampleSource from "../../../components/ExampleSource.astro";
+
+Use this pattern when you are walking an asset tree in a tool or build step. The example creates a small directory, imports it once from disk, then again through `os.DirFS`.
+
+If you need to keep a large import from fanning out too hard, add `ravenporter.WithBatchConcurrency(n)` to either call. The default limit follows `runtime.GOMAXPROCS(0)`.
+
+## Key APIs
+
+- `ravenporter.ImportDir()`
+- `ravenporter.ImportFSDir()`
+
+## Run
+
+```bash
+go run ./examples/batch-import
+```
+
+## Expected Output
+
+```text
+import-dir=2
+  a.obj -> obj
+  nested/b.obj -> obj
+import-fs-dir=2
+  assets/a.obj -> obj
+  assets/nested/b.obj -> obj
+```
+
+## Source
+
+<ExampleSource example="batch-import" />
+
+## Related Reading
+
+- [Import Workflows](../../import-workflows/)
+- [Reports and Validation](../../reports-and-validation/)
+- [ravenporter Package](../../ravenporter-package/)
+- [View full example on GitHub](https://github.com/gophics/ravenporter/tree/master/examples/batch-import)

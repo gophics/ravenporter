@@ -1,0 +1,39 @@
+---
+title: Input Sources Example
+description: Import the same asset from os.DirFS, in-memory bytes, and a reader.
+---
+
+import ExampleSource from "../../../components/ExampleSource.astro";
+
+Use this when the asset does not start as a plain path on disk. It shows the same import flow through `os.DirFS`, raw bytes, and a `ReadSeekerAt`-compatible reader such as `*bytes.Reader`.
+
+## Key APIs
+
+- `ravenporter.ImportFS()`
+- `ravenporter.ImportBytes()`
+- `ravenporter.ImportReader()`
+
+## Run
+
+```bash
+go run ./examples/input-sources
+```
+
+## Expected Output
+
+```text
+dirfs=obj/1
+bytes=obj/1
+reader=obj/1
+```
+
+## Source
+
+<ExampleSource example="input-sources" />
+
+## Related Reading
+
+- [Import Workflows](../../import-workflows/)
+- [Quick Start](../../quick-start/)
+- [ravenporter Package](../../ravenporter-package/)
+- [View full example on GitHub](https://github.com/gophics/ravenporter/tree/master/examples/input-sources)

@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/gophics/ravenporter/detect"
@@ -189,6 +190,18 @@ func WithProcessFlags(flags process.PPFlag) Option {
 	return func(cfg *config) error {
 		cfg.ProcessFlags = flags
 		cfg.profileResolvable = false
+		return nil
+	}
+}
+
+// WithBatchConcurrency sets the maximum number of assets imported concurrently by ImportDir and ImportFSDir.
+// A limit of 0 uses the default worker count derived from runtime.GOMAXPROCS(0).
+func WithBatchConcurrency(limit int) Option {
+	return func(cfg *config) error {
+		if limit < 0 {
+			return fmt.Errorf("pipeline: batch concurrency must be >= 0")
+		}
+		cfg.workerLimit = limit
 		return nil
 	}
 }

@@ -1,0 +1,37 @@
+---
+title: Quickstart Import Example
+description: Import one local asset with a preset and inspect the first useful report fields.
+---
+
+import ExampleSource from "../../../components/ExampleSource.astro";
+
+Start here if you just want to see the library do something useful. This example writes a tiny OBJ file, imports it with `ImportPath()`, applies a built-in preset, and prints a few report fields.
+
+## Key APIs
+
+- `ravenporter.ImportPath()`
+- `ravenporter.WithPreset()`
+- `Result.Report`
+
+## Run
+
+```bash
+go run ./examples/quickstart-import
+```
+
+## Expected Output
+
+```text
+format=obj preset=fast meshes=1 issues=0
+```
+
+## Source
+
+<ExampleSource example="quickstart-import" />
+
+## Related Reading
+
+- [Quick Start](../../quick-start/)
+- [Import Workflows](../../import-workflows/)
+- [ravenporter Package](../../ravenporter-package/)
+- [View full example on GitHub](https://github.com/gophics/ravenporter/tree/master/examples/quickstart-import)

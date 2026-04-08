@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -272,6 +273,45 @@ func TestImportBatchConcurrent(t *testing.T) {
 		expected.NormalizeGraph()
 		assert.Equal(t, expected, res.Asset)
 		assert.Equal(t, fmt.Sprintf("dir/test%d.glb", i+1), res.Report.Source.InputPath)
+	}
+}
+
+func TestWithBatchConcurrency(t *testing.T) {
+	tests := []struct {
+		name        string
+		limit       int
+		wantWorkers int
+		wantErr     string
+	}{
+		{
+			name:        "explicit limit",
+			limit:       3,
+			wantWorkers: 3,
+		},
+		{
+			name:        "zero uses default",
+			limit:       0,
+			wantWorkers: runtime.GOMAXPROCS(0),
+		},
+		{
+			name:    "negative limit rejected",
+			limit:   -1,
+			wantErr: "batch concurrency must be >= 0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg, err := resolveOptions(WithBatchConcurrency(tt.limit))
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantWorkers, cfg.workers())
+		})
 	}
 }
 

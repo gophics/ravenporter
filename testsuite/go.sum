@@ -19,6 +19,8 @@ github.com/pierrec/lz4/v4 v4.1.26 h1:GrpZw1gZttORinvzBdXPUXATeqlJjqUG/D87TKMnhjY
 github.com/pierrec/lz4/v4 v4.1.26/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
 github.com/pion/opus v0.0.0-20260326165207-10397d92d9ba h1:QBnNH0CsUKSe9cYcvjIhGMAfL8NzqMb8tqwhoWGWvGc=
 github.com/pion/opus v0.0.0-20260326165207-10397d92d9ba/go.mod h1:t5Xog2n682JnawoykACE6nKVmupFvmJvkpM7x6bTv6g=
+github.com/pion/opus v0.0.0-20260405224355-d29951baa4ed h1:0ED+TyNT77XO0VD3jP70CC5jo2qw2ga2/EKtNDVBWSs=
+github.com/pion/opus v0.0.0-20260405224355-d29951baa4ed/go.mod h1:t5Xog2n682JnawoykACE6nKVmupFvmJvkpM7x6bTv6g=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/qmuntal/opc v0.7.10/go.mod h1:jYcgCT/xuTl5oMYeS/nSrfRe9gNrrsAPPeOFE2oRVaQ=

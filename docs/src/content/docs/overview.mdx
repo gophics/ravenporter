@@ -1,0 +1,126 @@
+---
+title: Overview
+description: What RavenPorter is, where it fits, and how the public library, CLI, cache package, and IR model relate to each other.
+---
+
+import PageLead from "../../components/PageLead.astro";
+import SignalGrid from "../../components/SignalGrid.astro";
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+<PageLead
+  summary="RavenPorter gives Go applications one place to import, inspect, validate, and cook assets before they ever reach runtime."
+  points={[
+    "Most integrations only need the root package.",
+    "The CLI follows the same ideas if you would rather work from the shell.",
+    "The cache package matters once startup cost becomes part of the problem.",
+  ]}
+/>
+
+<SignalGrid
+  items={[
+    {
+      title: "One import surface",
+      body: "Models, images, audio, and fonts all flow through the same result and report model.",
+    },
+    {
+      title: "Flat internal representation",
+      body: "The IR is index-based and runtime-oriented, which makes it easy to validate, transform, serialize, and cache.",
+    },
+    {
+      title: "Strict runtime packaging",
+      body: "The cache format is optimized for fast reload of already-imported content instead of best-effort archival.",
+    },
+  ]}
+/>
+
+## What RavenPorter Gives You
+
+- One import surface for models, images, audio, and fonts.
+- A flat, index-based IR that is easy to traverse, transform, serialize, and validate.
+- A strict runtime cache format through [`cache`](../runtime-cache/) for faster load paths.
+- A small root package API with optional lower-level hooks in [`detect`](../detect-package/), [`process`](../process-package/), [`validate`](../validate-package/), and [`emit/json`](../emit-json-package/).
+
+If you want the design rationale behind those choices, see [Why RavenPorter](../why-ravenporter/).
+
+## Main Layers
+
+| Layer | Purpose |
+| --- | --- |
+| [`ravenporter`](../ravenporter-package/) | Public import entrypoint, option model, profile helpers, supported-format discovery |
+| [`cache`](../cache-package/) | Cook and load `.rpcache` runtime assets |
+| [`detect`](../detect-package/) | Registry and decoder contracts for custom format detection and decode |
+| [`process`](../process-package/) | Built-in post-import processing catalog |
+| [`validate`](../validate-package/) | Structural and semantic validation passes |
+| [`ir`](../ir-asset-and-graph/) | Runtime-oriented asset representation |
+
+## Library Vs CLI Vs Cache
+
+- Reach for the library when RavenPorter is part of a larger application or build pipeline.
+- The CLI is the better fit for inspection, conversion, validation, or cooking from the shell.
+- Bring in the cache package when startup time matters more than reparsing source assets on every launch.
+
+## Common Starting Points
+
+<CardGrid>
+  <LinkCard
+    title="I want the smallest possible integration"
+    href="../quick-start/"
+    description="Start with one local file and the root package only."
+  />
+  <LinkCard
+    title="I want a realistic end-to-end example"
+    href="../examples/asset-pipeline/"
+    description="Use the full workflow example once you care about repeatable pipeline behavior."
+  />
+  <LinkCard
+    title="I need to understand what the importer produces"
+    href="../ir-overview/"
+    description="Open the IR docs first if traversal, export, or validation shapes the rest of your work."
+  />
+  <LinkCard
+    title="I want shell-first workflows"
+    href="../cli-guide/"
+    description="Use the CLI guide if the job starts in a terminal rather than in application code."
+  />
+</CardGrid>
+
+## Typical Flow
+
+1. Import source content with `ravenporter.ImportPath()` or another root-package entrypoint.
+2. Inspect the returned `Result` and `Report`.
+3. Optionally persist the effective behavior as a TOML profile.
+4. Cook the imported result with `cache.Write()` if you want a runtime-ready artifact.
+5. Load the cooked asset later with `cache.Open()`, `cache.OpenFS()`, or `cache.Read()`.
+
+## Choose Your Entry Path
+
+<CardGrid>
+  <LinkCard
+    title="Library Guides"
+    href="../quick-start/"
+    description="If you are embedding RavenPorter in an application or toolchain, start here."
+  />
+  <LinkCard
+    title="CLI Guide"
+    href="../cli-guide/"
+    description="Take the shell route if you want the same workflow without writing Go first."
+  />
+  <LinkCard
+    title="IR Overview"
+    href="../ir-overview/"
+    description="Open this if the flat IR is the part you need to understand before integrating."
+  />
+  <LinkCard
+    title="Runtime Cache"
+    href="../runtime-cache/"
+    description="Open this once runtime packaging and startup cost are the next concerns on your list."
+  />
+</CardGrid>
+
+## Current Scope And Limits
+
+- The public API stays centered on the root package instead of exposing internal pipeline packages directly.
+- The JSON emitter is for inspection and tooling handoff, not for final runtime packaging.
+- `KHR_draco_mesh_compression` is not supported in the current glTF importer and therefore unavailable in cooked runtime assets too.
+
+For the design tradeoffs, continue with [Why RavenPorter](../why-ravenporter/). For code first, go to [Quick Start](../quick-start/). If the representation matters most, open [IR Overview](../ir-overview/).

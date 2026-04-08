@@ -109,50 +109,120 @@ func TestLoadMaskPrunesScene(t *testing.T) {
 	assert.Equal(t, ir.NoIndex, result.Asset.Nodes[0].MeshIndex)
 }
 
-func TestResolveProfileWithProcessFlagsIsNotSerializable(t *testing.T) {
-	profile, err := ravenporter.ResolveProfile(ravenporter.WithProcessFlags(process.PPEmbedTextures))
-	require.NoError(t, err)
-	assert.Equal(t, ravenporter.ProfileVersion, profile.Version)
-	assert.Empty(t, profile.Preset)
-	assert.Equal(t, []string{"embed-textures"}, profile.Process.EnabledSteps)
+func TestResolveProfileRuntimeOnlyOptions(t *testing.T) {
+	tests := []struct {
+		name    string
+		options []ravenporter.Option
+		check   func(t *testing.T, profile ravenporter.Profile)
+	}{
+		{
+			name: "process flags still resolve to profile content",
+			options: []ravenporter.Option{
+				ravenporter.WithProcessFlags(process.PPEmbedTextures),
+			},
+			check: func(t *testing.T, profile ravenporter.Profile) {
+				t.Helper()
+				assert.Equal(t, ravenporter.ProfileVersion, profile.Version)
+				assert.Empty(t, profile.Preset)
+				assert.Equal(t, []string{"embed-textures"}, profile.Process.EnabledSteps)
+			},
+		},
+		{
+			name: "batch concurrency is ignored by profile resolution",
+			options: []ravenporter.Option{
+				ravenporter.WithPreset(ravenporter.BuiltInPresetQuality),
+				ravenporter.WithBatchConcurrency(1),
+			},
+			check: func(t *testing.T, profile ravenporter.Profile) {
+				t.Helper()
+				assert.Equal(t, ravenporter.ProfileVersion, profile.Version)
+				assert.Equal(t, ravenporter.BuiltInPresetQuality, profile.Preset)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profile, err := ravenporter.ResolveProfile(tt.options...)
+			require.NoError(t, err)
+			tt.check(t, profile)
+		})
+	}
 }
 
-func TestImportPathAndImportFS(t *testing.T) {
+func TestImportSingleAssetEntryPoints(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "scene.obj")
 	require.NoError(t, os.WriteFile(path, []byte("o Tri\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"), 0o644))
-
-	result, err := ravenporter.ImportPath(context.Background(), path)
-	require.NoError(t, err)
-	assert.Equal(t, ir.FormatOBJ, result.Report.Source.DetectedFormat)
 
 	fsys := fstest.MapFS{
 		"scene.obj": &fstest.MapFile{Data: []byte("o Tri\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")},
 	}
-	result, err = ravenporter.ImportFS(context.Background(), fsys, "scene.obj")
-	require.NoError(t, err)
-	assert.Equal(t, ir.FormatOBJ, result.Report.Source.DetectedFormat)
+
+	tests := []struct {
+		name     string
+		importFn func() (*ravenporter.Result, error)
+	}{
+		{
+			name: "ImportPath",
+			importFn: func() (*ravenporter.Result, error) {
+				return ravenporter.ImportPath(context.Background(), path)
+			},
+		},
+		{
+			name: "ImportFS",
+			importFn: func() (*ravenporter.Result, error) {
+				return ravenporter.ImportFS(context.Background(), fsys, "scene.obj")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := tt.importFn()
+			require.NoError(t, err)
+			require.NotNil(t, result)
+			assert.Equal(t, ir.FormatOBJ, result.Report.Source.DetectedFormat)
+		})
+	}
 }
 
-func TestImportDirAndImportFSDir(t *testing.T) {
+func TestImportBatchEntryPoints(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.obj"), []byte("o A\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.obj"), []byte("o B\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"), 0o644))
-
-	results, err := ravenporter.ImportDir(context.Background(), dir)
-	require.NoError(t, err)
-	require.Len(t, results, 2)
-	assert.Equal(t, ir.FormatOBJ, results[0].Report.Source.DetectedFormat)
-	assert.Equal(t, ir.FormatOBJ, results[1].Report.Source.DetectedFormat)
 
 	fsys := fstest.MapFS{
 		"assets/a.obj": &fstest.MapFile{Data: []byte("o A\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")},
 		"assets/b.obj": &fstest.MapFile{Data: []byte("o B\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")},
 	}
-	results, err = ravenporter.ImportFSDir(context.Background(), fsys, "assets")
-	require.NoError(t, err)
-	require.Len(t, results, 2)
-	assert.Equal(t, ir.FormatOBJ, results[0].Report.Source.DetectedFormat)
-	assert.Equal(t, ir.FormatOBJ, results[1].Report.Source.DetectedFormat)
+
+	tests := []struct {
+		name     string
+		importFn func() ([]*ravenporter.Result, error)
+	}{
+		{
+			name: "ImportDir",
+			importFn: func() ([]*ravenporter.Result, error) {
+				return ravenporter.ImportDir(context.Background(), dir, ravenporter.WithBatchConcurrency(1))
+			},
+		},
+		{
+			name: "ImportFSDir",
+			importFn: func() ([]*ravenporter.Result, error) {
+				return ravenporter.ImportFSDir(context.Background(), fsys, "assets", ravenporter.WithBatchConcurrency(1))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			results, err := tt.importFn()
+			require.NoError(t, err)
+			require.Len(t, results, 2)
+			assert.Equal(t, ir.FormatOBJ, results[0].Report.Source.DetectedFormat)
+			assert.Equal(t, ir.FormatOBJ, results[1].Report.Source.DetectedFormat)
+		})
+	}
 }
 
 func TestSaveAndLoadProfile(t *testing.T) {

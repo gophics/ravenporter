@@ -1,0 +1,37 @@
+---
+title: Inspect And Export Example
+description: Inspect the import report, run validation directly, and emit JSON IR.
+---
+
+import ExampleSource from "../../../components/ExampleSource.astro";
+
+Use this when you are debugging an asset pipeline or handing data to another tool. It imports once, checks the report, runs `validate.Asset()` directly, and writes JSON IR.
+
+## Key APIs
+
+- `Result.Report`
+- `validate.Asset()`
+- `emit/json.WriteTo()`
+
+## Run
+
+```bash
+go run ./examples/inspect-and-export
+```
+
+## Expected Output
+
+```text
+format=obj report_issues=0 validation_errors=0 validation_warnings=0 json_meshes=1 json_root_nodes=1
+```
+
+## Source
+
+<ExampleSource example="inspect-and-export" />
+
+## Related Reading
+
+- [Reports and Validation](../../reports-and-validation/)
+- [JSON IR and Emitters](../../json-ir-and-emitters/)
+- [validate Package](../../validate-package/)
+- [View full example on GitHub](https://github.com/gophics/ravenporter/tree/master/examples/inspect-and-export)

@@ -15,7 +15,7 @@ require (
 	github.com/hpinc/go3mf v0.24.2 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
-	github.com/pion/opus v0.0.0-20260326165207-10397d92d9ba // indirect
+	github.com/pion/opus v0.0.0-20260405224355-d29951baa4ed // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/qmuntal/opc v0.7.12 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect

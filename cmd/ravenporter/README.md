@@ -17,8 +17,10 @@ package.
 
 ## Install
 
+Requires Go `1.25.7` or newer.
+
 ```bash
-go install github.com/gophics/ravenporter/cmd/ravenporter@latest
+go install github.com/gophics/ravenporter/cmd/ravenporter@v0.1.0
 ```
 
 ## Common Commands
@@ -89,20 +91,22 @@ Today, `json` is the only emitter format exposed by the CLI.
 ### Batch Import A Directory
 
 ```bash
-ravenporter batch assets --out out --pretty
+ravenporter batch assets --out out --pretty --recursive
 ```
 
-This walks the directory tree recursively and writes JSON IR for every supported
-asset it finds.
+This writes JSON IR for every supported asset it finds. Add `--recursive` when
+you want to walk subdirectories too; without it, `batch` stays at the top level
+of the input directory.
 
-### Convert A Directory
+### Convert A Source Asset
 
 ```bash
-ravenporter convert assets --format json --out out --pretty
+ravenporter convert assets/scene.glb --out out/scene.json --pretty
 ```
 
-Use `convert` when you want explicit emitter selection. Today that still means
-JSON, but the command shape is there for future emitters.
+Use `convert` when you want the shorter import-plus-export workflow and you are
+happy with the emitter implied by `--out`. Today that still means JSON, so point
+`--out` at a `.json` file.
 
 ## Profiles
 

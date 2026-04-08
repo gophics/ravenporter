@@ -5,6 +5,11 @@ tools, and asset pipelines.
 
 It loads source assets into a single runtime-oriented IR, [`ir.Asset`](./ir/asset.go), and it can also write and read a cooked cache format through [`cache`](./cache/). The goal is straightforward: one import surface for models, images, audio, and fonts without dragging engine-specific assumptions into the library.
 
+## Requirements
+
+- Go `1.25.7` or newer
+- Node.js `22.12.0` or newer if you want to build the docs site
+
 ## What It Is Good At
 
 - importing mixed asset types through one API
@@ -48,7 +53,8 @@ func main() {
 
 Use `ImportDir` for local directories and `ImportFSDir` for arbitrary
 filesystems. These calls walk the tree recursively and import every supported
-asset they find.
+asset they find. By default, batch imports use a worker limit based on
+`runtime.GOMAXPROCS(0)`. Use `WithBatchConcurrency` if you want to cap it.
 
 ```go
 package main
@@ -65,6 +71,7 @@ func main() {
 		context.Background(),
 		"assets",
 		ravenporter.WithPreset(ravenporter.BuiltInPresetQuality),
+		ravenporter.WithBatchConcurrency(4),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -239,13 +246,18 @@ The root package is the intended entry point.
 - `ImportDir`, `ImportFSDir`
 - `WithPreset`, `WithProfile`, `WithProfileFile`
 - `WithDecodeMaxFileSize`, `WithDecodeMaxVertices`
+- `WithDecodeMaxImagePixels`, `WithDecodeMaxAudioSamples`
 - `WithGlobalScale`, `WithTargetUpAxis`, `WithEmbedTextures`
+- `WithBatchConcurrency`
 - `WithLoadMask`
+- `WithRegistry`, `WithLogger`, `WithProcessFlags`
 - `NewRegistry`
 - `SupportedFormats`, `SupportedExtensions`, `SupportsExtension`
 
 Profiles are TOML-serializable. You can load them with `LoadProfile`, save them
-with `SaveProfile`, and derive them from options with `ResolveProfile`.
+with `SaveProfile`, parse bytes with `ParseProfileTOML`, and derive them from
+options with `ResolveProfile`. Use `BuiltInPresetNames()` when you want the
+canonical preset strings programmatically.
 
 ## Runtime Model
 
@@ -279,6 +291,16 @@ Use:
 - `make test` for fast root-module validation
 - `make test-integration` for corpus-backed integration coverage
 - `make test-all` or `make release-check` for the full local gate
+
+## Project Docs
+
+- [`CHANGELOG.md`](./CHANGELOG.md) for release notes
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) for local setup and contribution expectations
+
+## License
+
+RavenPorter-authored source code in this repository is licensed under the
+Apache License, Version 2.0. See [`LICENSE`](./LICENSE).
 
 ## Unsupported
 

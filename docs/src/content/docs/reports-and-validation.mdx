@@ -1,0 +1,135 @@
+---
+title: Reports and Validation
+description: Understand RavenPorter Result, Report, issues, dependencies, summaries, and the structural versus semantic validation stages.
+---
+
+import PageLead from "../../components/PageLead.astro";
+import SignalGrid from "../../components/SignalGrid.astro";
+import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components";
+
+<PageLead
+  summary="RavenPorter separates hard pipeline failures from structured report data, so callers can see what happened instead of getting a bare pass or fail."
+  points={[
+    "Check the error first, then keep the result when it is non-nil.",
+    "Use report stages to pinpoint where the pipeline failed or warned.",
+    "Structural issues and semantic warnings happen at different points in the flow and mean different things.",
+  ]}
+/>
+
+<SignalGrid
+  items={[
+    {
+      title: "Stable stages",
+      body: "Issues are grouped by named pipeline stages such as detect, decode, process, and the validation passes.",
+    },
+    {
+      title: "Consistent severity",
+      body: "Every issue is labeled as error, warning, or info, so people and automation can react consistently.",
+    },
+    {
+      title: "Useful partial results",
+      body: "Some failures still return a partial result, which preserves source and dependency context for debugging.",
+    },
+  ]}
+/>
+
+<Aside type="note" title="Result handling">
+  Treat the error as authoritative, then inspect the result when it is non-nil. That gives you the strict failure signal and the richest available diagnostics.
+</Aside>
+
+## Report Shape
+
+| Field | Meaning |
+| --- | --- |
+| `Source` | Input name, path, detected format, source metadata, preset, profile file, effective options, and provenance notes |
+| `Issues` | Stable findings with `stage`, `severity`, `code`, and `message` |
+| `Dependencies` | Direct external dependencies discovered during decode or asset collection |
+| `Summary` | High-level counts for scenes, meshes, materials, nodes, images, audio, fonts, and more |
+
+## Pipeline Stages
+
+The root package uses these stable stage names in `Report.Issues`:
+
+| Stage | Meaning |
+| --- | --- |
+| `detect` | Format detection and decoder lookup |
+| `decode` | Decoder execution |
+| `validate-structural` | Integrity checks before processing |
+| `process` | Built-in post-processing |
+| `validate-semantic` | Logical checks after processing and load-mask pruning |
+
+## Severity
+
+| Severity | Meaning |
+| --- | --- |
+| `error` | A fatal or serious issue |
+| `warning` | Non-fatal issue worth surfacing |
+| `info` | Informational note |
+
+## Important Behavior
+
+- Structural validation errors stop the import and return an error.
+- Semantic validation findings are appended to the report after processing. The import can still return a usable `Result` with semantic errors recorded in `Report.Issues`.
+- Decoder and pipeline failures can still leave you with a partial `Result`, especially when RavenPorter already knows the source format and has report context to preserve.
+- Dependencies are collected from both decoder-reported provenance and asset-level references such as external image paths.
+
+## Example
+
+```json
+{
+  "source": {
+    "input_name": "scene.glb",
+    "detected_format": "glb",
+    "preset": "quality"
+  },
+  "issues": [
+    {
+      "stage": "validate-semantic",
+      "severity": "warning",
+      "code": "DEGENERATE_TRIANGLE",
+      "message": "mesh[0].prim[0] triangle 12 has duplicate indices"
+    }
+  ],
+  "summary": {
+    "scenes": 1,
+    "meshes": 4,
+    "materials": 3,
+    "textures": 5
+  }
+}
+```
+
+## Standalone Validation API
+
+Open [`validate`](../validate-package/) when you want direct control over validation for scene and model assets:
+
+```go
+result := validate.Asset(asset)
+if !result.OK() {
+	for _, issue := range result.Errors {
+		log.Printf("error %s: %s", issue.Code, issue.Message)
+	}
+}
+```
+
+The current standalone rules focus on mesh, node, material, texture-reference, and animation checks. Non-scene assets usually rely more on import-time decode failures than on additional `validate` findings.
+
+## What To Read Next
+
+<CardGrid>
+  <LinkCard
+    title="Error and Issue Reference"
+    href="../error-and-issue-reference/"
+    description="Keep the stable code vocabulary nearby when you need to classify or react to issues programmatically."
+  />
+  <LinkCard
+    title="Runtime Cache"
+    href="../runtime-cache/"
+    description="Open this to see how dependencies and report metadata carry into cooked assets."
+  />
+  <LinkCard
+    title="validate Package"
+    href="../validate-package/"
+    description="Open the direct validation API if you need to run structural and semantic checks yourself."
+  />
+</CardGrid>
