@@ -61,40 +61,24 @@ func (d *Decoder) Probe(r io.ReadSeeker) bool {
 	if err != nil {
 		return false
 	}
-	defer func() { _, _ = r.Seek(pos, io.SeekStart) }() //nolint:errcheck // reset pos
-
-	if isASCII(r) {
-		return true
+	probed := isBinary(r)
+	if !probed {
+		probed = isASCII(r)
 	}
-	buf := pool.GetBuffer(headerSize + triCountSize)
-	defer pool.PutBuffer(buf)
-	n, err := r.Read(buf[:headerSize+triCountSize])
-	if err != nil && err != io.EOF {
+	if _, err := r.Seek(pos, io.SeekStart); err != nil {
 		return false
 	}
-	if n < headerSize+triCountSize {
-		return false
-	}
-	triCount := binread.ReadU32LE(buf[headerSize:])
-	if triCount == 0 || triCount > maxTriangles {
-		return false
-	}
-	size, err := r.Seek(0, io.SeekEnd)
-	if err != nil {
-		return false
-	}
-	expectedSize := int64(headerSize+triCountSize) + int64(triCount)*triangleSize
-	return size == expectedSize
+	return probed
 }
 
 func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, error) {
 	if err := decutil.CheckStreamSize(r, opts.MaxFileSize); err != nil {
 		return nil, err
 	}
-	if isASCII(r) {
-		return decodeASCII(r, opts)
+	if isBinary(r) {
+		return decodeBinary(r, opts)
 	}
-	return decodeBinary(r, opts)
+	return decodeASCII(r, opts)
 }
 
 func (d *Decoder) Extensions() []string { return []string{extSTL} }
@@ -104,8 +88,48 @@ func isASCII(r io.ReadSeeker) bool {
 	buf := pool.GetBuffer(asciiProbeSize)
 	defer pool.PutBuffer(buf)
 	n, err := r.Read(buf[:6])
-	_, _ = r.Seek(0, io.SeekStart) //nolint:errcheck // best-effort reset
+	if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+		return false
+	}
 	return err == nil && n >= len(asciiPrefix) && decutil.Bstr(buf[:len(asciiPrefix)]) == asciiPrefix
+}
+
+func isBinary(r io.ReadSeeker) bool {
+	buf := pool.GetBuffer(headerSize + triCountSize)
+	defer pool.PutBuffer(buf)
+
+	n, err := r.Read(buf[:headerSize+triCountSize])
+	if err != nil && err != io.EOF {
+		if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+			return false
+		}
+		return false
+	}
+	if n < headerSize+triCountSize {
+		if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+			return false
+		}
+		return false
+	}
+
+	triCount := binread.ReadU32LE(buf[headerSize:])
+	if triCount == 0 || triCount > maxTriangles {
+		if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+			return false
+		}
+		return false
+	}
+
+	size, err := r.Seek(0, io.SeekEnd)
+	if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+		return false
+	}
+	if err != nil {
+		return false
+	}
+
+	expectedSize := int64(headerSize+triCountSize) + int64(triCount)*triangleSize
+	return size == expectedSize
 }
 
 func decodeBinary(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, error) {

@@ -13,7 +13,7 @@ func parseLayerElement(node *fbxNode) *layerElement {
 	le := &layerElement{}
 	for _, child := range node.children {
 		switch child.name {
-		case leNormals, leUV, leColors:
+		case leNormals, leTangents, leBinormals, leUV, leColors:
 			if len(child.properties) > 0 {
 				le.data = child.properties[0].arrF64
 			}
@@ -85,6 +85,32 @@ func expandTangents(le *layerElement, polyIndices []int32) [][4]float32 {
 	return expandLayer(le, polyIndices, vecStride, func(data []float64, base int) [4]float32 {
 		return [4]float32{float32(data[base]), float32(data[base+1]), float32(data[base+2]), 1.0}
 	})
+}
+
+func expandBinormals(le *layerElement, polyIndices []int32) [][3]float32 {
+	return expandLayer(le, polyIndices, vecStride, func(data []float64, base int) [3]float32 {
+		return [3]float32{float32(data[base]), float32(data[base+1]), float32(data[base+2])}
+	})
+}
+
+func applyBinormalHandedness(tangents [][4]float32, normals, binormals [][3]float32) {
+	if len(tangents) == 0 || len(normals) != len(tangents) || len(binormals) != len(tangents) {
+		return
+	}
+
+	for i := range tangents {
+		nx, ny, nz := normals[i][0], normals[i][1], normals[i][2]
+		tx, ty, tz := tangents[i][0], tangents[i][1], tangents[i][2]
+		bx, by, bz := binormals[i][0], binormals[i][1], binormals[i][2]
+
+		cx := ny*tz - nz*ty
+		cy := nz*tx - nx*tz
+		cz := nx*ty - ny*tx
+
+		if cx*bx+cy*by+cz*bz < 0 {
+			tangents[i][3] = -1
+		}
+	}
 }
 
 func resolveLayerIndex(le *layerElement, polyVertIdx, controlPtIdx int) int {

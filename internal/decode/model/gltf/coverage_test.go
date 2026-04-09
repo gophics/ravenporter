@@ -17,6 +17,7 @@ func TestPrimitiveMode(t *testing.T) {
 	}{
 		{0, ir.Points},
 		{1, ir.Lines},
+		{2, ir.LineLoop},
 		{3, ir.LineStrip},
 		{4, ir.Triangles},
 		{5, ir.TriangleStrip},

@@ -159,6 +159,30 @@ func convertFBXLight(node *fbxNode) *ir.Light {
 	return light
 }
 
+func applyTextureConnection(mat *ir.Material, propName string, texIdx int) {
+	const texturePropertyCap = 2
+
+	switch propName {
+	case fbxPropDiffuseColor, "":
+		mat.BaseColorTexture = &ir.TextureRef{TextureIndex: texIdx, Tiling: defaultTiling}
+	case fbxPropEmissiveColor:
+		mat.EmissiveTexture = &ir.TextureRef{TextureIndex: texIdx, Tiling: defaultTiling}
+	case fbxPropNormalMap:
+		mat.NormalTexture = &ir.TextureRef{TextureIndex: texIdx, Tiling: defaultTiling}
+		mat.NormalScale = defaultNormalScale
+	case fbxPropAmbientColor:
+		if mat.Properties == nil {
+			mat.Properties = make(map[string]any, texturePropertyCap)
+		}
+		mat.Properties[fbxPropAmbientTexture] = texIdx
+	case fbxPropSpecularColor:
+		if mat.Properties == nil {
+			mat.Properties = make(map[string]any, texturePropertyCap)
+		}
+		mat.Properties[fbxPropSpecularTexture] = texIdx
+	}
+}
+
 func parseConnections(node *fbxNode) []connection {
 	if node == nil {
 		return nil
@@ -218,17 +242,7 @@ func resolveConnections(
 		if !isMat || !isTex || matIdx >= len(asset.Materials) {
 			continue
 		}
-		mat := asset.Materials[matIdx]
-		ref := &ir.TextureRef{TextureIndex: texIdx, Tiling: defaultTiling}
-		switch c.propName {
-		case fbxPropDiffuseColor:
-			mat.BaseColorTexture = ref
-		case fbxPropEmissiveColor:
-			mat.EmissiveTexture = ref
-		case fbxPropNormalMap:
-			mat.NormalTexture = ref
-			mat.NormalScale = defaultNormalScale
-		}
+		applyTextureConnection(asset.Materials[matIdx], c.propName, texIdx)
 	}
 
 	parentSet := make(map[int]bool, len(asset.Nodes))

@@ -20,6 +20,7 @@
       "Format": "wav",
       "SampleRate": 44100,
       "Layout": "mono",
+      "ChannelMask": 0,
       "BitDepth": 16,
       "Duration": 1000000000,
       "LoopStart": -1,

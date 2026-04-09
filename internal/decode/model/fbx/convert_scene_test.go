@@ -248,6 +248,26 @@ func TestExpandUVs(t *testing.T) {
 	assert.InDelta(t, 1.0, uvs[2][1], 0.001)
 }
 
+func TestApplyBinormalHandedness(t *testing.T) {
+	tangents := [][4]float32{
+		{1, 0, 0, 1},
+		{1, 0, 0, 1},
+	}
+	normals := [][3]float32{
+		{0, 0, 1},
+		{0, 0, 1},
+	}
+	binormals := [][3]float32{
+		{0, 1, 0},
+		{0, -1, 0},
+	}
+
+	applyBinormalHandedness(tangents, normals, binormals)
+
+	assert.Equal(t, float32(1), tangents[0][3])
+	assert.Equal(t, float32(-1), tangents[1][3])
+}
+
 func TestZlibDecompress(t *testing.T) {
 	// Compress some data first
 	input := []byte("hello world, this is a test of zlib decompression in FBX")
@@ -413,17 +433,23 @@ func TestWireASCIITextures(t *testing.T) {
 		},
 		Textures: []*ir.Texture{
 			{Name: "Tex0"},
+			{Name: "Tex1"},
+			{Name: "Tex2"},
 		},
 	}
 	conns := []asciiConnection{
 		{child: 10, parent: 20, propName: fbxPropDiffuseColor},
+		{child: 11, parent: 20, propName: fbxPropAmbientColor},
+		{child: 12, parent: 20, propName: fbxPropSpecularColor},
 	}
-	texIDMap := map[int64]int{10: 0}
+	texIDMap := map[int64]int{10: 0, 11: 1, 12: 2}
 	matIDMap := map[int64]int{20: 0}
 
 	wireASCIITextures(asset, conns, matIDMap, texIDMap)
 	assert.NotNil(t, asset.Materials[0].BaseColorTexture)
 	assert.Equal(t, 0, asset.Materials[0].BaseColorTexture.TextureIndex)
+	assert.Equal(t, 1, asset.Materials[0].Properties[fbxPropAmbientTexture])
+	assert.Equal(t, 2, asset.Materials[0].Properties[fbxPropSpecularTexture])
 }
 
 func TestBuildASCIIHierarchy(t *testing.T) {
@@ -531,6 +557,8 @@ func TestResolveConnections(t *testing.T) {
 		},
 		Textures: []*ir.Texture{
 			{Name: "Tex0", ImageIndex: 0},
+			{Name: "Tex1", ImageIndex: 0},
+			{Name: "Tex2", ImageIndex: 0},
 		},
 		Images: []*ir.ImageAsset{{Name: "Image0"}},
 		Cameras: []*ir.Camera{
@@ -546,7 +574,7 @@ func TestResolveConnections(t *testing.T) {
 	matMap := map[int64]int{20: 0}
 	camMap := map[int64]int{30: 0}
 	lightMap := map[int64]int{40: 0}
-	texMap := map[int64]int{50: 0}
+	texMap := map[int64]int{50: 0, 51: 1, 52: 2}
 	videoMap := map[int64][]byte{60: {0xFF, 0xD8}}
 
 	conns := []connection{
@@ -555,7 +583,9 @@ func TestResolveConnections(t *testing.T) {
 		{childID: 30, parentID: 1},                                 // cam -> model
 		{childID: 40, parentID: 1},                                 // light -> model
 		{childID: 50, parentID: 20, propName: fbxPropDiffuseColor}, // tex -> mat
-		{childID: 60, parentID: 50},                                // video -> tex
+		{childID: 51, parentID: 20, propName: fbxPropAmbientColor},
+		{childID: 52, parentID: 20, propName: fbxPropSpecularColor},
+		{childID: 60, parentID: 50}, // video -> tex
 	}
 
 	resolveConnections(asset, conns, geoMap, matMap, modelMap, texMap, camMap, lightMap, videoMap, nil)
@@ -565,6 +595,8 @@ func TestResolveConnections(t *testing.T) {
 	assert.Equal(t, 0, asset.Nodes[0].LightIndex)
 	assert.NotNil(t, asset.Materials[0].BaseColorTexture)
 	assert.Equal(t, 0, asset.Materials[0].BaseColorTexture.TextureIndex)
+	assert.Equal(t, 1, asset.Materials[0].Properties[fbxPropAmbientTexture])
+	assert.Equal(t, 2, asset.Materials[0].Properties[fbxPropSpecularTexture])
 	assert.Len(t, asset.Images, 1)
 	assert.Equal(t, []byte{0xFF, 0xD8}, asset.Images[asset.Textures[0].ImageIndex].Compressed)
 	assert.Len(t, asset.RootNodes, 1)

@@ -65,6 +65,18 @@ const (
 	ImageTIFF ImageFormat = "tiff"
 )
 
+// ImageTopology identifies the logical texture shape carried by an image asset.
+type ImageTopology string
+
+// Supported image topology values.
+const (
+	ImageTopology2D        ImageTopology = "2D"
+	ImageTopology3D        ImageTopology = "3D"
+	ImageTopologyCube      ImageTopology = "Cube"
+	ImageTopology2DArray   ImageTopology = "2DArray"
+	ImageTopologyCubeArray ImageTopology = "CubeArray"
+)
+
 // AudioFormat identifies an audio encoding.
 type AudioFormat string
 

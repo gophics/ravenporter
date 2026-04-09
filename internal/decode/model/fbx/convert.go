@@ -62,6 +62,8 @@ const (
 	clusterTransformLink = "TransformLink"
 
 	leNormals   = "Normals"
+	leTangents  = "Tangents"
+	leBinormals = "Binormals"
 	leUV        = "UV"
 	leNormalIdx = "NormalIndex"
 	leUVIdx     = "UVIndex"
@@ -79,13 +81,15 @@ const (
 	vecStride    = 3
 	degToRad     = math.Pi / 180
 
-	fbxPropDiffuseColor  = "DiffuseColor"
-	fbxPropEmissiveColor = "EmissiveColor"
-	fbxPropSpecularColor = "SpecularColor"
-	fbxPropAmbientColor  = "AmbientColor"
-	fbxPropNormalMap     = "NormalMap"
-	fbxPropSpecular      = "specular"
-	fbxPropAmbient       = "ambient"
+	fbxPropDiffuseColor    = "DiffuseColor"
+	fbxPropEmissiveColor   = "EmissiveColor"
+	fbxPropSpecularColor   = "SpecularColor"
+	fbxPropAmbientColor    = "AmbientColor"
+	fbxPropNormalMap       = "NormalMap"
+	fbxPropSpecular        = "specular"
+	fbxPropAmbient         = "ambient"
+	fbxPropSpecularTexture = "specularTexture"
+	fbxPropAmbientTexture  = "ambientTexture"
 
 	fbxKTimeScale = 46186158000.0 // FBX KTime ticks per second
 

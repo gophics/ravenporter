@@ -131,6 +131,11 @@ type parseCtx struct {
 	matNames map[string]int
 }
 
+type faceMaterialGroup struct {
+	materialIndex int
+	faceIndices   []int
+}
+
 func walkChunks(data []byte, ctx *parseCtx) {
 	for len(data) >= chunkHdrSize {
 		id := binread.ReadU16LE(data[:2])
@@ -183,6 +188,7 @@ func parseObject(data []byte, ctx *parseCtx) {
 func parseTriMesh(name string, data []byte, ctx *parseCtx) {
 	md := ir.MeshData{}
 	matIndex := ir.NoIndex
+	var faceMats []faceMaterialGroup
 	var localMatrix [matrixFloats]float32
 	hasMatrix := false
 	var smoothGroups []int
@@ -199,7 +205,7 @@ func parseTriMesh(name string, data []byte, ctx *parseCtx) {
 		case chunkVertices:
 			readVertices(body, &md)
 		case chunkFaces:
-			readFaces(body, &md, &matIndex, ctx)
+			readFaces(body, &md, &matIndex, &faceMats, ctx)
 		case chunkTexCoord:
 			readUVs(body, &md)
 		case chunkSmooth:
@@ -223,7 +229,8 @@ func parseTriMesh(name string, data []byte, ctx *parseCtx) {
 
 	mesh := &ir.Mesh{Name: name}
 	md.SmoothGroups = smoothGroups
-	mesh.Primitives = []ir.Primitive{{Mode: ir.Triangles, Data: md, MaterialIndex: matIndex}}
+	base := ir.Primitive{Mode: ir.Triangles, Data: md, MaterialIndex: matIndex}
+	mesh.Primitives = splitFaceMaterialGroups(base, faceMats)
 	meshIdx := len(ctx.asset.Meshes)
 	ctx.asset.Meshes = append(ctx.asset.Meshes, mesh)
 
@@ -263,7 +270,9 @@ func readVertices(body []byte, md *ir.MeshData) {
 	}
 }
 
-func readFaces(body []byte, md *ir.MeshData, matIndex *int, ctx *parseCtx) {
+func readFaces(
+	body []byte, md *ir.MeshData, matIndex *int, faceMats *[]faceMaterialGroup, ctx *parseCtx,
+) {
 	if len(body) < minChunkBody {
 		return
 	}
@@ -288,8 +297,30 @@ func readFaces(body []byte, md *ir.MeshData, matIndex *int, ctx *parseCtx) {
 			break
 		}
 		if id == chunkFaceMat {
-			name := binread.CString(remaining[chunkHdrSize:size])
+			matBody := remaining[chunkHdrSize:size]
+			nameLen := binread.CStringLen(matBody)
+			name := binread.CString(matBody)
 			if idx, ok := ctx.matNames[name]; ok {
+				if len(matBody) < nameLen+minChunkBody {
+					*matIndex = idx
+					remaining = remaining[size:]
+					continue
+				}
+				count := int(binread.ReadU16LE(matBody[nameLen:]))
+				faceBody := matBody[nameLen+minChunkBody:]
+				if len(faceBody) < count*minChunkBody {
+					*matIndex = idx
+					remaining = remaining[size:]
+					continue
+				}
+				group := faceMaterialGroup{
+					materialIndex: idx,
+					faceIndices:   make([]int, 0, count),
+				}
+				for i := range count {
+					group.faceIndices = append(group.faceIndices, int(binread.ReadU16LE(faceBody[i*minChunkBody:])))
+				}
+				*faceMats = append(*faceMats, group)
 				*matIndex = idx
 			}
 		}
@@ -325,4 +356,76 @@ func readSmoothGroups(body []byte, faceCount int) []int {
 		groups[i] = int(binread.ReadU32LE(body[i*u32Size:]))
 	}
 	return groups
+}
+
+func splitFaceMaterialGroups(base ir.Primitive, groups []faceMaterialGroup) []ir.Primitive {
+	if len(groups) == 0 || len(base.Data.Indices) == 0 {
+		return []ir.Primitive{base}
+	}
+
+	totalFaces := len(base.Data.Indices) / vertsPerTri
+	assigned := make([]bool, totalFaces)
+	prims := make([]ir.Primitive, 0, len(groups)+1)
+
+	for _, group := range groups {
+		if len(group.faceIndices) == 0 {
+			continue
+		}
+
+		prim := base
+		prim.MaterialIndex = group.materialIndex
+		prim.Data.Indices = make([]uint32, 0, len(group.faceIndices)*vertsPerTri)
+		if len(base.Data.SmoothGroups) > 0 {
+			prim.Data.SmoothGroups = make([]int, 0, len(group.faceIndices))
+		}
+
+		for _, faceIdx := range group.faceIndices {
+			if faceIdx < 0 || faceIdx >= totalFaces {
+				continue
+			}
+			start := faceIdx * vertsPerTri
+			prim.Data.Indices = append(prim.Data.Indices, base.Data.Indices[start:start+vertsPerTri]...)
+			if len(base.Data.SmoothGroups) > faceIdx {
+				prim.Data.SmoothGroups = append(prim.Data.SmoothGroups, base.Data.SmoothGroups[faceIdx])
+			}
+			assigned[faceIdx] = true
+		}
+
+		if len(prim.Data.Indices) > 0 {
+			prims = append(prims, prim)
+		}
+	}
+
+	if len(prims) == 0 {
+		return []ir.Primitive{base}
+	}
+
+	remainingFaces := 0
+	for _, used := range assigned {
+		if !used {
+			remainingFaces++
+		}
+	}
+	if remainingFaces == 0 {
+		return prims
+	}
+
+	prim := base
+	prim.Data.Indices = make([]uint32, 0, remainingFaces*vertsPerTri)
+	if len(base.Data.SmoothGroups) > 0 {
+		prim.Data.SmoothGroups = make([]int, 0, remainingFaces)
+	}
+	for faceIdx, used := range assigned {
+		if used {
+			continue
+		}
+		start := faceIdx * vertsPerTri
+		prim.Data.Indices = append(prim.Data.Indices, base.Data.Indices[start:start+vertsPerTri]...)
+		if len(base.Data.SmoothGroups) > faceIdx {
+			prim.Data.SmoothGroups = append(prim.Data.SmoothGroups, base.Data.SmoothGroups[faceIdx])
+		}
+	}
+	prims = append(prims, prim)
+
+	return prims
 }

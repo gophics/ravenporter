@@ -12,6 +12,7 @@ import (
 const (
 	modePoints        = 0
 	modeLines         = 1
+	modeLineLoop      = 2
 	modeLineStrip     = 3
 	modeTriangles     = 4
 	modeTriangleStrip = 5
@@ -191,6 +192,8 @@ func primitiveMode(m int) ir.PrimitiveMode {
 		return ir.TriangleStrip
 	case modeLines:
 		return ir.Lines
+	case modeLineLoop:
+		return ir.LineLoop
 	case modeLineStrip:
 		return ir.LineStrip
 	case modePoints:

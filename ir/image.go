@@ -74,6 +74,9 @@ type ImageAsset struct {
 	Format     ImageFormat
 	Width      int
 	Height     int
+	Topology   ImageTopology
+	Depth      int
+	Layers     int
 	Channels   ChannelCount
 	ColorSpace ColorSpace
 	MipLevels  int
@@ -94,6 +97,21 @@ type ImageAsset struct {
 	Metadata map[string]string
 
 	PixelDecode PixelDecodeFunc `json:"-"` // Set by the decoder, called by DecodePixels.
+}
+
+func (d *ImageAsset) NormalizeTopology() {
+	if d == nil {
+		return
+	}
+	if d.Topology == "" {
+		d.Topology = ImageTopology2D
+	}
+	if d.Depth <= 0 {
+		d.Depth = 1
+	}
+	if d.Layers <= 0 {
+		d.Layers = 1
+	}
 }
 
 // Pixels returns the decoded pixel buffer, or nil if not yet decoded.

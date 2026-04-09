@@ -13,15 +13,16 @@ type SampleDecodeFunc func(clip *AudioClip) ([]float32, error)
 
 // AudioClip holds audio data.
 type AudioClip struct {
-	Name       string
-	Format     AudioFormat
-	SampleRate int
-	Layout     ChannelLayout
-	BitDepth   BitDepth
-	Duration   time.Duration
-	LoopStart  int // NoIndex if no loop
-	LoopEnd    int // NoIndex if no loop
-	Metadata   AudioMetadata
+	Name        string
+	Format      AudioFormat
+	SampleRate  int
+	Layout      ChannelLayout
+	ChannelMask uint32
+	BitDepth    BitDepth
+	Duration    time.Duration
+	LoopStart   int // NoIndex if no loop
+	LoopEnd     int // NoIndex if no loop
+	Metadata    AudioMetadata
 
 	samples  []float32
 	decOnce  sync.Once

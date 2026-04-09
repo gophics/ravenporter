@@ -57,6 +57,16 @@ func TestTriangulate(t *testing.T) {
 			wantMode:   ir.TriangleStrip,
 			wantIdxLen: 2,
 		},
+		{
+			name:       "line_loop_passthrough",
+			mode:       ir.LineLoop,
+			verts:      4,
+			positions:  [][3]float32{{0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {0, 1, 0}},
+			indices:    []uint32{0, 1, 2, 3},
+			wantMode:   ir.LineLoop,
+			wantIdxLen: 4,
+			wantIdx:    []uint32{0, 1, 2, 3},
+		},
 	}
 
 	for _, tt := range tests {

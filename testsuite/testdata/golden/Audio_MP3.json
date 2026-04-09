@@ -20,6 +20,7 @@
       "Format": "mp3",
       "SampleRate": 44100,
       "Layout": "mono",
+      "ChannelMask": 0,
       "BitDepth": 16,
       "Duration": 1044897959,
       "LoopStart": -1,

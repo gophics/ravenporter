@@ -24,6 +24,7 @@ func writeAudioSlice(enc *encoder, clips []*ir.AudioClip, blobs *blobBuilder) {
 		enc.string(string(clip.Format))
 		enc.int(clip.SampleRate)
 		enc.string(string(clip.Layout))
+		enc.u32(clip.ChannelMask)
 		enc.int(int(clip.BitDepth))
 		enc.i64(int64(clip.Duration))
 		enc.int(clip.LoopStart)
@@ -47,14 +48,15 @@ func readAudioSlice(dec *decoder, blobs *blobStore) ([]*ir.AudioClip, error) {
 			continue
 		}
 		clip := &ir.AudioClip{
-			Name:       dec.string(),
-			Format:     ir.AudioFormat(dec.string()),
-			SampleRate: int(dec.i32()),
-			Layout:     ir.ChannelLayout(dec.string()),
-			BitDepth:   ir.BitDepth(dec.i32()),
-			Duration:   time.Duration(dec.i64()),
-			LoopStart:  int(dec.i32()),
-			LoopEnd:    int(dec.i32()),
+			Name:        dec.string(),
+			Format:      ir.AudioFormat(dec.string()),
+			SampleRate:  int(dec.i32()),
+			Layout:      ir.ChannelLayout(dec.string()),
+			ChannelMask: dec.u32(),
+			BitDepth:    ir.BitDepth(dec.i32()),
+			Duration:    time.Duration(dec.i64()),
+			LoopStart:   int(dec.i32()),
+			LoopEnd:     int(dec.i32()),
 		}
 		metadata, err := readAudioMetadata(dec, blobs)
 		if err != nil {
@@ -233,6 +235,9 @@ func writeImageSlice(enc *encoder, images []*ir.ImageAsset, blobs *blobBuilder, 
 		enc.string(string(image.Format))
 		enc.int(image.Width)
 		enc.int(image.Height)
+		enc.string(string(image.Topology))
+		enc.int(image.Depth)
+		enc.int(image.Layers)
 		enc.int(int(image.Channels))
 		enc.string(string(image.ColorSpace))
 		enc.int(image.MipLevels)
@@ -262,10 +267,14 @@ func readImageSlice(dec *decoder, blobs *blobStore) ([]*ir.ImageAsset, error) {
 			Format:     ir.ImageFormat(dec.string()),
 			Width:      int(dec.i32()),
 			Height:     int(dec.i32()),
+			Topology:   ir.ImageTopology(dec.string()),
+			Depth:      int(dec.i32()),
+			Layers:     int(dec.i32()),
 			Channels:   ir.ChannelCount(dec.i32()),
 			ColorSpace: ir.ColorSpace(dec.string()),
 			MipLevels:  int(dec.i32()),
 		}
+		image.NormalizeTopology()
 		image.SetCompressedLoader(newBlobLoader(blobs, readBlobRef(dec)))
 		image.SourceFormat = ir.FormatID(dec.string())
 		image.SourcePath = dec.string()

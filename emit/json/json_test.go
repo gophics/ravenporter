@@ -30,6 +30,22 @@ func (nopCloser) Close() error { return nil }
 func TestEmitJSON(t *testing.T) {
 	asset := &ir.Asset{
 		Name: "test",
+		Images: []*ir.ImageAsset{{
+			Name:     "texture",
+			Format:   ir.ImageDDS,
+			Width:    16,
+			Height:   16,
+			Topology: ir.ImageTopologyCube,
+			Depth:    1,
+			Layers:   6,
+		}},
+		AudioClips: []*ir.AudioClip{{
+			Name:        "clip",
+			Format:      ir.AudioWAV,
+			SampleRate:  48000,
+			Layout:      ir.LayoutStereo,
+			ChannelMask: 3,
+		}},
 		Meshes: []*ir.Mesh{{
 			Name: "cube",
 			Primitives: []ir.Primitive{{
@@ -52,6 +68,11 @@ func TestEmitJSON(t *testing.T) {
 	var decoded ir.Asset
 	require.NoError(t, json.Unmarshal(fs.files["out.json"].Bytes(), &decoded))
 	assert.Equal(t, "test", decoded.Name)
+	require.Len(t, decoded.Images, 1)
+	assert.Equal(t, ir.ImageTopologyCube, decoded.Images[0].Topology)
+	assert.Equal(t, 6, decoded.Images[0].Layers)
+	require.Len(t, decoded.AudioClips, 1)
+	assert.Equal(t, uint32(3), decoded.AudioClips[0].ChannelMask)
 	require.Len(t, decoded.Meshes, 1)
 	assert.Equal(t, "cube", decoded.Meshes[0].Name)
 }

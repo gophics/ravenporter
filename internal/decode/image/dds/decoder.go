@@ -23,6 +23,7 @@ const (
 	ddsHeaderSize  = 128
 	ddsHeightOff   = 12
 	ddsWidthOff    = 16
+	ddsDepthOff    = 24
 	ddsMipCountOff = 28
 	ddsFlagsOff    = 80
 	ddsFourCCOff   = 84
@@ -31,6 +32,7 @@ const (
 	ddsGBitMaskOff = 96
 	ddsBBitMaskOff = 100
 	ddsABitMaskOff = 104
+	ddsCaps2Off    = 112
 	ddsDXT10Off    = 128
 	ddsDXT10Size   = 20
 
@@ -54,6 +56,14 @@ const (
 	ddspfFourCC      = 0x4
 	ddspfRGB         = 0x40
 	ddspfLuminance   = 0x20000
+
+	ddsCaps2Cubemap = 0x00000200
+	ddsCaps2Volume  = 0x00200000
+
+	d3d10ResourceDimensionTexture1D = 2
+	d3d10ResourceDimensionTexture2D = 3
+	d3d10ResourceDimensionTexture3D = 4
+	d3d10MiscFlagTextureCube        = 0x4
 
 	rgbaChannels = 4
 	colorMax     = 255
@@ -86,6 +96,7 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 
 	w, h := ddsDimensions(raw)
 	compFormat := ddsCompressionFormat(raw)
+	topology, depth, layers := ddsTopology(raw)
 
 	if err := imgutil.CheckPixelLimit(w, h, opts.MaxImagePixels); err != nil {
 		return nil, imgutil.DecodeErrStr(ddsName, err)
@@ -99,6 +110,9 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 		Channels:          ir.ChannelRGBA,
 		ColorSpace:        ir.ColorSRGB,
 		MipLevels:         ddsMipCount(raw),
+		Topology:          topology,
+		Depth:             depth,
+		Layers:            layers,
 		CompressionFormat: compFormat,
 		Compressed:        raw,
 	}
@@ -133,6 +147,53 @@ func ddsMipCount(data []byte) int {
 		return mips
 	}
 	return 1
+}
+
+func ddsTopology(data []byte) (topology ir.ImageTopology, depth, layers int) {
+	if len(data) < ddsHeaderSize {
+		return ir.ImageTopology2D, 1, 1
+	}
+
+	depth = int(binread.ReadU32LE(data[ddsDepthOff:]))
+	if depth <= 0 {
+		depth = 1
+	}
+
+	if hasDX10Header(data) {
+		if len(data) < ddsDXT10Off+ddsDXT10Size {
+			return ir.ImageTopology2D, depth, 1
+		}
+		dim := binread.ReadU32LE(data[ddsDXT10Off+4:])
+		miscFlag := binread.ReadU32LE(data[ddsDXT10Off+8:])
+		layers = int(binread.ReadU32LE(data[ddsDXT10Off+12:]))
+		if layers <= 0 {
+			layers = 1
+		}
+
+		switch {
+		case dim == d3d10ResourceDimensionTexture3D:
+			return ir.ImageTopology3D, depth, 1
+		case miscFlag&d3d10MiscFlagTextureCube != 0 && layers > 1:
+			return ir.ImageTopologyCubeArray, 1, layers
+		case miscFlag&d3d10MiscFlagTextureCube != 0:
+			return ir.ImageTopologyCube, 1, 1
+		case dim == d3d10ResourceDimensionTexture1D || dim == d3d10ResourceDimensionTexture2D:
+			if layers > 1 {
+				return ir.ImageTopology2DArray, 1, layers
+			}
+		}
+		return ir.ImageTopology2D, 1, 1
+	}
+
+	caps2 := binread.ReadU32LE(data[ddsCaps2Off:])
+	switch {
+	case caps2&ddsCaps2Volume != 0 && depth > 1:
+		return ir.ImageTopology3D, depth, 1
+	case caps2&ddsCaps2Cubemap != 0:
+		return ir.ImageTopologyCube, 1, 1
+	default:
+		return ir.ImageTopology2D, 1, 1
+	}
 }
 
 const (

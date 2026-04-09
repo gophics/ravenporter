@@ -20,6 +20,7 @@
       "Format": "flac",
       "SampleRate": 44100,
       "Layout": "stereo",
+      "ChannelMask": 0,
       "BitDepth": 16,
       "Duration": 7000000000,
       "LoopStart": -1,

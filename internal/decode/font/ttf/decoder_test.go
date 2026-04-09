@@ -79,6 +79,16 @@ func TestDecodeRoboto(t *testing.T) {
 	assert.NotEmpty(t, f.Metadata)
 }
 
+func TestDecodeCollection(t *testing.T) {
+	collection := testutil.BuildFontCollection(minimalTTF, minimalTTF)
+	scene, err := (&ttf.Decoder{}).Decode(bytes.NewReader(collection), detect.DecodeOptions{})
+	require.NoError(t, err)
+	require.Len(t, scene.Fonts, 2)
+	assert.Equal(t, "TestFont #0", scene.Fonts[0].Name)
+	assert.Equal(t, "TestFont #1", scene.Fonts[1].Name)
+	assert.Equal(t, ir.FontTTF, scene.Fonts[0].Format)
+}
+
 func TestDecodeRejectsOversizedInputBeforeRead(t *testing.T) {
 	src := testutil.NewOversizeReadSeeker(8)
 	_, err := (&ttf.Decoder{}).Decode(src, detect.DecodeOptions{MaxFileSize: 4})

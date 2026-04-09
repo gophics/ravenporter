@@ -695,8 +695,8 @@
           0
         ],
         "Tiling": [
-          0,
-          0
+          1,
+          1
         ],
         "Rotation": 0,
         "Channel": 0
@@ -752,6 +752,9 @@
       "Format": "png",
       "Width": 0,
       "Height": 0,
+      "Topology": "",
+      "Depth": 0,
+      "Layers": 0,
       "Channels": 0,
       "ColorSpace": "sRGB",
       "MipLevels": 1,

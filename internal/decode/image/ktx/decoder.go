@@ -28,22 +28,30 @@ var magicKTX1 = []byte{0xAB, 0x4B, 0x54, 0x58}
 var magicKTX2 = []byte{0xAB, 0x4B, 0x54, 0x58, 0x20, 0x32, 0x30, 0xBB, 0x0D, 0x0A, 0x1A, 0x0A}
 
 const (
-	ktx1HeaderSize = 64
-	ktx1WidthOff   = 36
-	ktx1HeightOff  = 40
+	ktx1HeaderSize    = 64
+	ktx1WidthOff      = 36
+	ktx1HeightOff     = 40
+	ktx1DepthOff      = 44
+	ktx1LayersOff     = 48
+	ktx1FacesOff      = 52
+	ktx1LevelCountOff = 56
 
 	ktx2HeaderSize    = 80
 	ktx2VkFormatOff   = 12
 	ktx2WidthOff      = 20
 	ktx2HeightOff     = 24
-	ktx2LevelCountOff = 44
-	ktx2SuperOff      = 40
-	ktx2IndexByteOff  = 48
+	ktx2DepthOff      = 28
+	ktx2LayersOff     = 32
+	ktx2FacesOff      = 36
+	ktx2LevelCountOff = 40
+	ktx2SuperOff      = 44
+	ktx2IndexByteOff  = 80
 
 	ktx2SuperZstd = 2
 
 	ktx2LevelEntrySize = 24
 	ktx2LevelFieldSize = 8
+	ktxCubeFaceCount   = 6
 
 	metaZstdInflatedSize = "ZstdInflatedSize"
 )
@@ -119,14 +127,18 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 
 	var w, h, mips int
 	var comp ir.GPUCompression
+	var topology ir.ImageTopology
+	var depth, layers int
 	if isV2 {
 		w, h = ktx2Dimensions(raw)
 		mips = ktx2MipCount(raw)
 		comp = ktx2CompressionFormat(raw)
+		topology, depth, layers = ktx2Topology(raw)
 	} else {
 		w, h = ktx1Dimensions(raw)
-		mips = 1
+		mips = ktx1MipCount(raw)
 		comp = ktx1CompressionFormat(raw)
+		topology, depth, layers = ktx1Topology(raw)
 	}
 
 	if err := imgutil.CheckPixelLimit(w, h, opts.MaxImagePixels); err != nil {
@@ -141,6 +153,9 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 		Channels:          ir.ChannelRGBA,
 		ColorSpace:        ir.ColorSRGB,
 		MipLevels:         mips,
+		Topology:          topology,
+		Depth:             depth,
+		Layers:            layers,
 		CompressionFormat: comp,
 		Compressed:        raw,
 	}
@@ -171,6 +186,39 @@ func ktx1Dimensions(data []byte) (w, h int) {
 	w = int(binread.ReadU32LE(data[ktx1WidthOff:]))
 	h = int(binread.ReadU32LE(data[ktx1HeightOff:]))
 	return w, h
+}
+
+func ktx1MipCount(data []byte) int {
+	if len(data) < ktx1HeaderSize {
+		return 1
+	}
+	if mips := int(binread.ReadU32LE(data[ktx1LevelCountOff:])); mips > 0 {
+		return mips
+	}
+	return 1
+}
+
+func ktx1Topology(data []byte) (topology ir.ImageTopology, depth, layers int) {
+	if len(data) < ktx1HeaderSize {
+		return ir.ImageTopology2D, 1, 1
+	}
+
+	depth = int(binread.ReadU32LE(data[ktx1DepthOff:]))
+	layers = int(binread.ReadU32LE(data[ktx1LayersOff:]))
+	faces := int(binread.ReadU32LE(data[ktx1FacesOff:]))
+
+	switch {
+	case depth > 0:
+		return ir.ImageTopology3D, depth, 1
+	case faces == ktxCubeFaceCount && layers > 0:
+		return ir.ImageTopologyCubeArray, 1, layers
+	case faces == ktxCubeFaceCount:
+		return ir.ImageTopologyCube, 1, 1
+	case layers > 0:
+		return ir.ImageTopology2DArray, 1, layers
+	default:
+		return ir.ImageTopology2D, 1, 1
+	}
 }
 
 func ktx1CompressionFormat(data []byte) ir.GPUCompression {
@@ -221,6 +269,29 @@ func ktx2MipCount(data []byte) int {
 		return mips
 	}
 	return 1
+}
+
+func ktx2Topology(data []byte) (topology ir.ImageTopology, depth, layers int) {
+	if len(data) < ktx2HeaderSize {
+		return ir.ImageTopology2D, 1, 1
+	}
+
+	depth = int(binread.ReadU32LE(data[ktx2DepthOff:]))
+	layers = int(binread.ReadU32LE(data[ktx2LayersOff:]))
+	faces := int(binread.ReadU32LE(data[ktx2FacesOff:]))
+
+	switch {
+	case depth > 0:
+		return ir.ImageTopology3D, depth, 1
+	case faces == ktxCubeFaceCount && layers > 0:
+		return ir.ImageTopologyCubeArray, 1, layers
+	case faces == ktxCubeFaceCount:
+		return ir.ImageTopologyCube, 1, 1
+	case layers > 0:
+		return ir.ImageTopology2DArray, 1, layers
+	default:
+		return ir.ImageTopology2D, 1, 1
+	}
 }
 
 func ktx2CompressionFormat(data []byte) ir.GPUCompression {

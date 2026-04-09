@@ -177,17 +177,7 @@ func wireASCIITextures(asset *ir.Asset, conns []asciiConnection, matIDMap, texID
 		if !isTex || !isMat || matIdx >= len(asset.Materials) {
 			continue
 		}
-		mat := asset.Materials[matIdx]
-		ref := &ir.TextureRef{TextureIndex: texIdx, Tiling: defaultTiling}
-		switch c.propName {
-		case fbxPropDiffuseColor, "":
-			mat.BaseColorTexture = ref
-		case fbxPropEmissiveColor:
-			mat.EmissiveTexture = ref
-		case fbxPropNormalMap:
-			mat.NormalTexture = ref
-			mat.NormalScale = defaultNormalScale
-		}
+		applyTextureConnection(asset.Materials[matIdx], c.propName, texIdx)
 	}
 }
 

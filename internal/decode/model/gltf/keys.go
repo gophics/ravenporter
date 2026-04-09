@@ -103,6 +103,7 @@ const (
 	keySource    = "source"
 	keyMimeType  = "mimeType"
 	keyURI       = "uri"
+	keyOffset    = "offset"
 	keyWrapS     = "wrapS"
 	keyWrapT     = "wrapT"
 	keyMinFilter = "minFilter"
@@ -121,8 +122,9 @@ const (
 	keySparseIndices = "indices"
 	keySparseValues  = "values"
 
-	keyKHRMaterialsUnlit = "KHR_materials_unlit"
-	keyKHRTextureBasisu  = "KHR_texture_basisu"
+	keyKHRMaterialsUnlit   = "KHR_materials_unlit"
+	keyKHRTextureBasisu    = "KHR_texture_basisu"
+	keyKHRTextureTransform = "KHR_texture_transform"
 
 	keyKHRLightsPunctual = "KHR_lights_punctual"
 	keyLights            = "lights"

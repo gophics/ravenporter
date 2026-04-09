@@ -46,7 +46,9 @@ func TestUnitScale(t *testing.T) {
 		unit go3mf.Units
 		want float64
 	}{
+		{"Micrometer", go3mf.UnitMicrometer, 0.000001},
 		{"Millimeter", go3mf.UnitMillimeter, 0.001},
+		{"Centimeter", go3mf.UnitCentimeter, 0.01},
 		{"Inch", go3mf.UnitInch, 0.0254},
 		{"Foot", go3mf.UnitFoot, 0.3048},
 		{"Meter", go3mf.UnitMeter, 1.0},

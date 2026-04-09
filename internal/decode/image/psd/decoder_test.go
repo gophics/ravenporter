@@ -180,6 +180,18 @@ func TestPSDMetadata(t *testing.T) {
 	assert.Equal(t, "3", img.Metadata["ColorMode"])
 }
 
+func TestPSBCompositePixels(t *testing.T) {
+	data := buildPSBFull(1, 1, 3, 8, 3, 0, []byte{0xFF, 0x80, 0x40})
+	scene, err := (&psd.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	require.Len(t, scene.Images, 1)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Len(t, pb.Data, 4)
+	assert.Equal(t, byte(0xFF), pb.Data[0])
+}
+
 func TestPSDPackBitsEdgeCases(t *testing.T) {
 	tests := []struct {
 		name string
@@ -243,6 +255,28 @@ func buildPSDFull(w, h, ch, depth, mode int, comp uint16, pixelData []byte) []by
 	buf.Write([]byte{0, 0, 0, 0}) // Color Mode Data.
 	buf.Write([]byte{0, 0, 0, 0}) // Image Resources.
 	buf.Write([]byte{0, 0, 0, 0}) // Layer & Mask Info.
+
+	buf.Write([]byte{byte(comp >> 8), byte(comp)})
+	buf.Write(pixelData)
+
+	return buf.Bytes()
+}
+
+func buildPSBFull(w, h, ch, depth, mode int, comp uint16, pixelData []byte) []byte {
+	var buf bytes.Buffer
+
+	buf.WriteString("8BPS")
+	buf.Write([]byte{0, 2})
+	buf.Write(make([]byte, 6))
+	buf.Write([]byte{byte(ch >> 8), byte(ch)})
+	buf.Write([]byte{byte(h >> 24), byte(h >> 16), byte(h >> 8), byte(h)})
+	buf.Write([]byte{byte(w >> 24), byte(w >> 16), byte(w >> 8), byte(w)})
+	buf.Write([]byte{byte(depth >> 8), byte(depth)})
+	buf.Write([]byte{byte(mode >> 8), byte(mode)})
+
+	buf.Write([]byte{0, 0, 0, 0})
+	buf.Write([]byte{0, 0, 0, 0})
+	buf.Write(make([]byte, 8))
 
 	buf.Write([]byte{byte(comp >> 8), byte(comp)})
 	buf.Write(pixelData)

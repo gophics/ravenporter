@@ -309,6 +309,70 @@ const testTextureWebPGLTF = `{
   "scenes": [{"nodes": [0]}], "scene": 0
 }`
 
+const testTextureTransformGLTF = `{
+  "asset": {"version": "2.0"},
+  "textures": [
+    {"source": 0},
+    {"source": 1},
+    {"source": 2},
+    {"source": 3}
+  ],
+  "images": [
+    {"uri": "base.png"},
+    {"uri": "normal.png"},
+    {"uri": "occlusion.png"},
+    {"uri": "emissive.png"}
+  ],
+  "materials": [{
+    "name": "Shifted",
+    "pbrMetallicRoughness": {
+      "baseColorTexture": {
+        "index": 0,
+        "texCoord": 0,
+        "extensions": {
+          "KHR_texture_transform": {
+            "offset": [0.25, 0.5],
+            "scale": [2.0, 3.0],
+            "rotation": 1.0,
+            "texCoord": 1
+          }
+        }
+      }
+    },
+    "normalTexture": {
+      "index": 1,
+      "scale": 0.75,
+      "extensions": {
+        "KHR_texture_transform": {
+          "offset": [0.1, 0.2],
+          "scale": [0.5, 0.5],
+          "rotation": 0.25
+        }
+      }
+    },
+    "occlusionTexture": {
+      "index": 2,
+      "strength": 0.4,
+      "extensions": {
+        "KHR_texture_transform": {
+          "offset": [0.3, 0.4]
+        }
+      }
+    },
+    "emissiveTexture": {
+      "index": 3,
+      "extensions": {
+        "KHR_texture_transform": {
+          "scale": [4.0, 5.0]
+        }
+      }
+    }
+  }],
+  "nodes": [{"name": "N"}],
+  "scenes": [{"nodes": [0]}],
+  "scene": 0
+}`
+
 func TestConvertAnimations(t *testing.T) {
 	const animJSON = `{
   "asset": {"version": "2.0"},
@@ -377,6 +441,33 @@ func TestConvertTexturesEXTTextureWebP(t *testing.T) {
 	assert.Equal(t, "DiffuseTex", textures[0].Name)
 	assert.Equal(t, ir.ImageWebP, images[textures[0].ImageIndex].Format)
 	assert.Equal(t, "diffuse.webp", images[textures[0].ImageIndex].SourcePath)
+}
+
+func TestTextureTransforms(t *testing.T) {
+	asset, err := (&Decoder{}).Decode(bytes.NewReader([]byte(testTextureTransformGLTF)), detect.DecodeOptions{})
+	require.NoError(t, err)
+
+	require.Len(t, asset.Materials, 1)
+	mat := asset.Materials[0]
+	require.NotNil(t, mat.BaseColorTexture)
+	assert.Equal(t, 1, mat.BaseColorTexture.UVSet)
+	assert.Equal(t, [2]float32{0.25, 0.5}, mat.BaseColorTexture.Offset)
+	assert.Equal(t, [2]float32{2, 3}, mat.BaseColorTexture.Tiling)
+	assert.InDelta(t, float32(1), mat.BaseColorTexture.Rotation, 0.001)
+
+	require.NotNil(t, mat.NormalTexture)
+	assert.Equal(t, [2]float32{0.1, 0.2}, mat.NormalTexture.Offset)
+	assert.Equal(t, [2]float32{0.5, 0.5}, mat.NormalTexture.Tiling)
+	assert.InDelta(t, float32(0.25), mat.NormalTexture.Rotation, 0.001)
+	assert.InDelta(t, float32(0.75), mat.NormalScale, 0.001)
+
+	require.NotNil(t, mat.OcclusionTexture)
+	assert.Equal(t, [2]float32{0.3, 0.4}, mat.OcclusionTexture.Offset)
+	assert.Equal(t, [2]float32{1, 1}, mat.OcclusionTexture.Tiling)
+	assert.InDelta(t, float32(0.4), mat.OcclusionStrength, 0.001)
+
+	require.NotNil(t, mat.EmissiveTexture)
+	assert.Equal(t, [2]float32{4, 5}, mat.EmissiveTexture.Tiling)
 }
 
 func TestConvertNodesEXTMeshGPUInstancing(t *testing.T) {

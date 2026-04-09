@@ -15,6 +15,7 @@ func convertGeometry(node *fbxNode) *ir.Mesh { //nolint:funlen // geometry extra
 	var uv1 *layerElement
 	var colors *layerElement
 	var tangents *layerElement
+	var binormals *layerElement
 	var smoothGroups []int32
 	uvCount := 0
 
@@ -44,7 +45,7 @@ func convertGeometry(node *fbxNode) *ir.Mesh { //nolint:funlen // geometry extra
 		case layerTangent:
 			tangents = parseLayerElement(child)
 		case layerBinormal:
-			_ = parseLayerElement(child)
+			binormals = parseLayerElement(child)
 		case layerSmoothing:
 			smoothGroups = parseSmoothingGroups(child)
 		}
@@ -61,6 +62,7 @@ func convertGeometry(node *fbxNode) *ir.Mesh { //nolint:funlen // geometry extra
 	var expandedUV1 [][2]float32
 	var expandedColors [][4]float32
 	var expandedTangents [][4]float32
+	var expandedBinormals [][3]float32
 	if normals != nil {
 		expandedNormals = expandNormals(normals, polyIndices)
 	}
@@ -76,6 +78,10 @@ func convertGeometry(node *fbxNode) *ir.Mesh { //nolint:funlen // geometry extra
 	if tangents != nil {
 		expandedTangents = expandTangents(tangents, polyIndices)
 	}
+	if binormals != nil {
+		expandedBinormals = expandBinormals(binormals, polyIndices)
+	}
+	applyBinormalHandedness(expandedTangents, expandedNormals, expandedBinormals)
 
 	attrCount := len(controlPts)
 	if len(expandedNormals) > attrCount {

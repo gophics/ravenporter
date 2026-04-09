@@ -18,17 +18,22 @@ const (
 	extTGA        = ".tga"
 	rgbaChannels  = 4
 
-	tgaTypeColorMappedRGB  = 1
-	tgaTypeUncompressedRGB = 2
-	tgaTypeRLEColorMapped  = 9
-	tgaTypeRLERGB          = 10
+	tgaTypeColorMappedRGB   = 1
+	tgaTypeUncompressedRGB  = 2
+	tgaTypeUncompressedGray = 3
+	tgaTypeRLEColorMapped   = 9
+	tgaTypeRLERGB           = 10
+	tgaTypeRLEGray          = 11
 
 	tgaHeaderSize  = 18
 	tgaFooterSize  = 18
+	tgaBPP8        = 8
+	tgaBPP16       = 16
 	tgaBPP24       = 24
 	tgaBPP32       = 32
 	tgaBitsPerByte = 8
 	tgaOriginTop   = 0x20
+	tgaOriginRight = 0x10
 	tgaRLERunBit   = 0x80
 	tgaRLECountMax = 0x7F
 
@@ -161,12 +166,13 @@ func decodeTGA(data []byte) (rgba []byte, w, h int, err error) {
 	}
 
 	isValidType := hdr.imageType == tgaTypeUncompressedRGB || hdr.imageType == tgaTypeRLERGB ||
-		hdr.imageType == tgaTypeColorMappedRGB || hdr.imageType == tgaTypeRLEColorMapped
+		hdr.imageType == tgaTypeColorMappedRGB || hdr.imageType == tgaTypeRLEColorMapped ||
+		hdr.imageType == tgaTypeUncompressedGray || hdr.imageType == tgaTypeRLEGray
 	if !isValidType {
 		return nil, 0, 0, errTGAUnsupported
 	}
 
-	if hdr.bpp != tgaBPP24 && hdr.bpp != tgaBPP32 && hdr.bpp != tgaBitsPerByte {
+	if hdr.bpp != tgaBPP8 && hdr.bpp != tgaBPP16 && hdr.bpp != tgaBPP24 && hdr.bpp != tgaBPP32 {
 		return nil, 0, 0, errTGAUnsupported
 	}
 
@@ -191,18 +197,24 @@ func decodeTGA(data []byte) (rgba []byte, w, h int, err error) {
 	}
 	_ = newPos
 
-	if hdr.imageType == tgaTypeColorMappedRGB || hdr.imageType == tgaTypeRLEColorMapped {
+	switch hdr.imageType {
+	case tgaTypeColorMappedRGB, tgaTypeRLEColorMapped:
 		rgba = mappedToRGBA(raw, colorMap, int(hdr.cmFirstEntry), int(hdr.cmEntrySize)/tgaBitsPerByte, w*h)
-	} else {
+	case tgaTypeUncompressedGray, tgaTypeRLEGray:
+		rgba = grayToRGBA(raw, bpp, w*h)
+	default:
 		rgba = bgrToRGBA(raw, bpp, w*h)
 	}
 
-	if hdr.imageType == tgaTypeRLEColorMapped || hdr.imageType == tgaTypeRLERGB {
+	if hdr.imageType == tgaTypeRLEColorMapped || hdr.imageType == tgaTypeRLERGB || hdr.imageType == tgaTypeRLEGray {
 		pool.PutBuffer(raw)
 	}
 
 	if hdr.descriptor&tgaOriginTop == 0 {
 		flipVertical(rgba, w, h)
+	}
+	if hdr.descriptor&tgaOriginRight != 0 {
+		flipHorizontal(rgba, w, h)
 	}
 	return rgba, w, h, nil
 }
@@ -276,6 +288,24 @@ func bgrToRGBA(src []byte, bpp, pixelCount int) []byte {
 	return rgba
 }
 
+func grayToRGBA(src []byte, bpp, pixelCount int) []byte {
+	rgba := make([]byte, pixelCount*rgbaChannels)
+	for i := range pixelCount {
+		srcOff := i * bpp
+		dstOff := i * rgbaChannels
+		value := src[srcOff]
+		rgba[dstOff] = value
+		rgba[dstOff+1] = value
+		rgba[dstOff+2] = value
+		if bpp == cmEntrySize2 {
+			rgba[dstOff+3] = src[srcOff+1]
+		} else {
+			rgba[dstOff+3] = 0xFF
+		}
+	}
+	return rgba
+}
+
 func mappedToRGBA(indices, colorMap []byte, firstEntry, cmBytesPerEntry, pixelCount int) []byte {
 	rgba := make([]byte, pixelCount*rgbaChannels)
 	for i := range pixelCount {
@@ -315,6 +345,19 @@ func flipVertical(pixels []byte, w, h int) {
 		bot := pixels[(h-1-y)*rowBytes : (h-1-y)*rowBytes+rowBytes]
 		for i := range rowBytes {
 			top[i], bot[i] = bot[i], top[i]
+		}
+	}
+}
+
+func flipHorizontal(pixels []byte, w, h int) {
+	for y := range h {
+		row := pixels[y*w*rgbaChannels : (y+1)*w*rgbaChannels]
+		for x := 0; x < w/2; x++ {
+			left := x * rgbaChannels
+			right := (w - 1 - x) * rgbaChannels
+			for i := range rgbaChannels {
+				row[left+i], row[right+i] = row[right+i], row[left+i]
+			}
 		}
 	}
 }

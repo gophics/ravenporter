@@ -26,6 +26,7 @@ var magicPSD = []byte("8BPS")
 
 const (
 	psdHeaderSize = 26
+	psdVersionOff = 4
 	psdChannelOff = 12
 	psdHeightOff  = 14
 	psdWidthOff   = 18
@@ -33,6 +34,7 @@ const (
 	psdModeOff    = 24
 
 	psdBlockLenSize  = 4
+	psbBlockLenSize  = 8
 	psdLayerCountMin = 2
 
 	psdCompRaw     = 0
@@ -41,6 +43,10 @@ const (
 	psdCompZIPPred = 3
 
 	psdRowLenSize = 2
+	psbRowLenSize = 4
+
+	psdVersionPSD = 1
+	psdVersionPSB = 2
 
 	psdModeGrayscale = 1
 	psdModeRGB       = 3
@@ -116,6 +122,7 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 
 func parsePSDBlocks(data []byte, decoded *ir.ImageAsset) {
 	depth, _ := psdDepthAndMode(data)
+	version := psdVersion(data)
 
 	pos := psdHeaderSize
 	if pos+psdBlockLenSize > len(data) {
@@ -133,22 +140,27 @@ func parsePSDBlocks(data []byte, decoded *ir.ImageAsset) {
 	if pos+psdBlockLenSize > len(data) {
 		return
 	}
-	lmLen := int(binread.ReadU32BE(data[pos:]))
-	if lmLen > 0 && pos+psdBlockLenSize+lmLen <= len(data) {
-		parseLayerMaskInfo(data[pos+psdBlockLenSize:pos+psdBlockLenSize+lmLen], decoded, depth)
+	layerLenSize := psdLayerBlockLenSize(version)
+	if pos+layerLenSize > len(data) {
+		return
+	}
+	lmLen := readPSDSectionLength(data[pos:], layerLenSize)
+	if lmLen > 0 && pos+layerLenSize+lmLen <= len(data) {
+		parseLayerMaskInfo(data[pos+layerLenSize:pos+layerLenSize+lmLen], decoded, depth, version)
 	}
 }
 
-func parseLayerMaskInfo(data []byte, decoded *ir.ImageAsset, depth int) {
-	if len(data) < psdBlockLenSize {
+func parseLayerMaskInfo(data []byte, decoded *ir.ImageAsset, depth, version int) {
+	layerLenSize := psdLayerBlockLenSize(version)
+	if len(data) < layerLenSize {
 		return
 	}
-	layerInfoLen := int(binread.ReadU32BE(data[0:]))
-	if layerInfoLen == 0 || layerInfoLen+psdBlockLenSize > len(data) {
+	layerInfoLen := readPSDSectionLength(data, layerLenSize)
+	if layerInfoLen == 0 || layerInfoLen+layerLenSize > len(data) {
 		return
 	}
 
-	layerData := data[psdBlockLenSize : psdBlockLenSize+layerInfoLen]
+	layerData := data[layerLenSize : layerLenSize+layerInfoLen]
 	if len(layerData) < psdLayerCountMin {
 		return
 	}
@@ -200,6 +212,7 @@ func psdImageDataOffset(data []byte) int {
 	if len(data) < psdHeaderSize {
 		return -1
 	}
+	version := psdVersion(data)
 	pos := psdHeaderSize
 
 	if pos+psdBlockLenSize > len(data) {
@@ -215,7 +228,11 @@ func psdImageDataOffset(data []byte) int {
 	if pos+psdBlockLenSize > len(data) {
 		return -1
 	}
-	pos += psdBlockLenSize + int(binread.ReadU32BE(data[pos:]))
+	layerLenSize := psdLayerBlockLenSize(version)
+	if pos+layerLenSize > len(data) {
+		return -1
+	}
+	pos += layerLenSize + readPSDSectionLength(data[pos:], layerLenSize)
 
 	return pos
 }
@@ -223,6 +240,7 @@ func psdImageDataOffset(data []byte) int {
 func readPSDCompositePixels(data []byte, w, h int) (*ir.PixelBuffer, error) {
 	channels := psdChannelCount(data)
 	depth, mode := psdDepthAndMode(data)
+	version := psdVersion(data)
 	if channels < 1 || w < 1 || h < 1 || depth < psdBitsPerByte {
 		return nil, errPSDImageDataTruncated
 	}
@@ -240,7 +258,7 @@ func readPSDCompositePixels(data []byte, w, h int) (*ir.PixelBuffer, error) {
 
 	totalScanlines := h * channels
 
-	planar, err := decompressPlanar(data[pos:], comp, totalScanlines, rowBytes)
+	planar, err := decompressPlanar(data[pos:], comp, totalScanlines, rowBytes, psdRowLenFieldSize(version))
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +272,7 @@ func readPSDCompositePixels(data []byte, w, h int) (*ir.PixelBuffer, error) {
 	}, nil
 }
 
-func decompressPlanar(data []byte, comp, totalScanlines, rowBytes int) ([]byte, error) {
+func decompressPlanar(data []byte, comp, totalScanlines, rowBytes, rowLenSize int) ([]byte, error) {
 	totalSize := totalScanlines * rowBytes
 	planar := make([]byte, totalSize)
 
@@ -266,13 +284,18 @@ func decompressPlanar(data []byte, comp, totalScanlines, rowBytes int) ([]byte, 
 		copy(planar, data[:totalSize])
 
 	case psdCompRLE:
-		rowTableSize := totalScanlines * psdRowLenSize
+		rowTableSize := totalScanlines * rowLenSize
 		if len(data) < rowTableSize {
 			return nil, errPSDImageDataTruncated
 		}
 		rowLengths := make([]int, totalScanlines)
 		for i := range totalScanlines {
-			rowLengths[i] = int(binread.ReadU16BE(data[i*psdRowLenSize:]))
+			off := i * rowLenSize
+			if rowLenSize == psdRowLenSize {
+				rowLengths[i] = int(binread.ReadU16BE(data[off:]))
+			} else {
+				rowLengths[i] = int(binread.ReadU32BE(data[off:]))
+			}
 		}
 		pos := rowTableSize
 		dst := 0
@@ -305,6 +328,40 @@ func decompressPlanar(data []byte, comp, totalScanlines, rowBytes int) ([]byte, 
 	}
 
 	return planar, nil
+}
+
+func psdVersion(data []byte) int {
+	if len(data) < psdVersionOff+2 {
+		return 0
+	}
+	return int(binread.ReadU16BE(data[psdVersionOff:]))
+}
+
+func psdLayerBlockLenSize(version int) int {
+	if version == psdVersionPSB {
+		return psbBlockLenSize
+	}
+	return psdBlockLenSize
+}
+
+func psdRowLenFieldSize(version int) int {
+	if version == psdVersionPSB {
+		return psbRowLenSize
+	}
+	return psdRowLenSize
+}
+
+func readPSDSectionLength(data []byte, size int) int {
+	switch size {
+	case psbBlockLenSize:
+		length := binary.BigEndian.Uint64(data)
+		if length > uint64(^uint(0)>>1) {
+			return 0
+		}
+		return int(length)
+	default:
+		return int(binread.ReadU32BE(data))
+	}
 }
 
 func undoPrediction(planar []byte, rowBytes int) {

@@ -110,6 +110,13 @@ func buildDDSHeader(w, h, mips int, flags uint32, fourCC string, bpp int, rMask,
 	return hdr
 }
 
+func buildDDSHeaderWithLayout(depth int, flags, caps2 uint32, fourCC string, bpp int) []byte {
+	hdr := buildDDSHeader(8, 4, 1, flags, fourCC, bpp, 0, 0, 0, 0)
+	putU32LE(hdr[24:], uint32(depth))
+	putU32LE(hdr[112:], caps2)
+	return hdr
+}
+
 func putU32LE(b []byte, v uint32) {
 	b[0] = byte(v)
 	b[1] = byte(v >> 8)
@@ -117,125 +124,108 @@ func putU32LE(b []byte, v uint32) {
 	b[3] = byte(v >> 24)
 }
 
-func TestDDS_DX10_BC7(t *testing.T) {
-	hdr := buildDDSHeader(4, 4, 3, 0x4, "DX10", 0, 0, 0, 0, 0)
-	dx10 := make([]byte, 20)
-	putU32LE(dx10[0:], 98) // DXGI_FORMAT_BC7_UNORM
-	hdr = append(hdr, dx10...)
-	hdr = append(hdr, make([]byte, 64)...)
-	data := hdr
+func TestDDS_DX10Formats(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+		want ir.GPUCompression
+	}{
+		{
+			name: "BC7",
+			data: func() []byte {
+				hdr := buildDDSHeader(4, 4, 3, 0x4, "DX10", 0, 0, 0, 0, 0)
+				dx10 := make([]byte, 20)
+				putU32LE(dx10[0:], 98)
+				hdr = append(hdr, dx10...)
+				return append(hdr, make([]byte, 64)...)
+			}(),
+			want: ir.GPUCompressionBC7,
+		},
+		{
+			name: "BC1",
+			data: func() []byte {
+				hdr := buildDDSHeader(4, 4, 1, 0x4, "DX10", 0, 0, 0, 0, 0)
+				dx10 := make([]byte, 20)
+				putU32LE(dx10[0:], 71)
+				return append(hdr, dx10...)
+			}(),
+			want: ir.GPUCompressionBC1,
+		},
+		{
+			name: "BC6H",
+			data: func() []byte {
+				hdr := buildDDSHeader(4, 4, 1, 0x4, "DX10", 0, 0, 0, 0, 0)
+				dx10 := make([]byte, 20)
+				putU32LE(dx10[0:], 95)
+				return append(hdr, dx10...)
+			}(),
+			want: ir.GPUCompressionBC6H,
+		},
+		{
+			name: "Truncated",
+			data: buildDDSHeader(4, 4, 1, 0x4, "DX10", 0, 0, 0, 0, 0),
+			want: ir.GPUCompressionNone,
+		},
+	}
 
 	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
-	require.NoError(t, err)
-	assert.Equal(t, ir.GPUCompressionBC7, scene.Images[0].CompressionFormat)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scene, err := dec.Decode(bytes.NewReader(tt.data), detect.DecodeOptions{})
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, scene.Images[0].CompressionFormat)
+		})
+	}
 }
 
-func TestDDS_DX10_BC1(t *testing.T) {
-	hdr := buildDDSHeader(4, 4, 1, 0x4, "DX10", 0, 0, 0, 0, 0)
-	dx10 := make([]byte, 20)
-	putU32LE(dx10[0:], 71) // DXGI_FORMAT_BC1_UNORM
-	hdr = append(hdr, dx10...)
-	data := hdr
+func TestDDS_UncompressedPixelFormats(t *testing.T) {
+	tests := []struct {
+		name   string
+		header []byte
+		pixels []byte
+		want   int
+	}{
+		{
+			name: "32bit",
+			header: buildDDSHeader(2, 2, 1, 0x40, "", 32,
+				0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000),
+			pixels: []byte{0xFF, 0x00, 0x00, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			want:   2 * 2 * 4,
+		},
+		{
+			name: "24bit",
+			header: buildDDSHeader(2, 2, 1, 0x40, "", 24,
+				0xFF0000, 0x00FF00, 0x0000FF, 0),
+			pixels: []byte{0xFF, 0x00, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			want:   2 * 2 * 4,
+		},
+		{
+			name: "16bit",
+			header: buildDDSHeader(2, 2, 1, 0x40, "", 16,
+				0xF800, 0x07E0, 0x001F, 0),
+			pixels: []byte{0x00, 0xF8, 0, 0, 0, 0, 0, 0},
+			want:   2 * 2 * 4,
+		},
+		{
+			name: "8bit",
+			header: buildDDSHeader(2, 2, 1, 0x20000, "", 8,
+				0xFF, 0, 0, 0),
+			pixels: []byte{128, 0, 0, 0},
+			want:   2 * 2 * 4,
+		},
+	}
 
 	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
-	require.NoError(t, err)
-	assert.Equal(t, ir.GPUCompressionBC1, scene.Images[0].CompressionFormat)
-}
-
-func TestDDS_DX10_BC6H(t *testing.T) {
-	hdr := buildDDSHeader(4, 4, 1, 0x4, "DX10", 0, 0, 0, 0, 0)
-	dx10 := make([]byte, 20)
-	putU32LE(dx10[0:], 95) // DXGI_FORMAT_BC6H_UF16
-	hdr = append(hdr, dx10...)
-	data := hdr
-
-	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
-	require.NoError(t, err)
-	assert.Equal(t, ir.GPUCompressionBC6H, scene.Images[0].CompressionFormat)
-}
-
-func TestDDS_DX10_Truncated(t *testing.T) {
-	hdr := buildDDSHeader(4, 4, 1, 0x4, "DX10", 0, 0, 0, 0, 0)
-	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(hdr), detect.DecodeOptions{})
-	require.NoError(t, err)
-	assert.Equal(t, ir.GPUCompressionNone, scene.Images[0].CompressionFormat)
-}
-
-func TestDDS_Uncompressed_32bit(t *testing.T) {
-	w, h := 2, 2
-	hdr := buildDDSHeader(w, h, 1, 0x40, "", 32,
-		0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000)
-
-	pixels := make([]byte, w*h*4)
-	pixels[0], pixels[1], pixels[2], pixels[3] = 0xFF, 0x00, 0x00, 0x80 // BGRA
-	hdr = append(hdr, pixels...)
-	data := hdr
-
-	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
-	require.NoError(t, err)
-	pb, decErr := scene.Images[0].DecodePixels()
-	require.NoError(t, decErr)
-	require.NotNil(t, pb)
-	assert.Len(t, pb.Data, w*h*4)
-}
-
-func TestDDS_Uncompressed_24bit(t *testing.T) {
-	w, h := 2, 2
-	hdr := buildDDSHeader(w, h, 1, 0x40, "", 24,
-		0xFF0000, 0x00FF00, 0x0000FF, 0)
-
-	pixels := make([]byte, w*h*3)
-	pixels[0], pixels[1], pixels[2] = 0xFF, 0x00, 0x00
-	hdr = append(hdr, pixels...)
-	data := hdr
-
-	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
-	require.NoError(t, err)
-	pb, decErr := scene.Images[0].DecodePixels()
-	require.NoError(t, decErr)
-	require.NotNil(t, pb)
-}
-
-func TestDDS_Uncompressed_16bit(t *testing.T) {
-	w, h := 2, 2
-	hdr := buildDDSHeader(w, h, 1, 0x40, "", 16,
-		0xF800, 0x07E0, 0x001F, 0)
-
-	pixels := make([]byte, w*h*2)
-	putU32LE(pixels[0:], 0xF800) // red pixel
-	hdr = append(hdr, pixels...)
-	data := hdr
-
-	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
-	require.NoError(t, err)
-	pb, decErr := scene.Images[0].DecodePixels()
-	require.NoError(t, decErr)
-	require.NotNil(t, pb)
-}
-
-func TestDDS_Uncompressed_8bit(t *testing.T) {
-	w, h := 2, 2
-	hdr := buildDDSHeader(w, h, 1, 0x20000, "", 8,
-		0xFF, 0, 0, 0)
-
-	pixels := make([]byte, w*h)
-	pixels[0] = 128
-	hdr = append(hdr, pixels...)
-	data := hdr
-
-	dec := &dds.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
-	require.NoError(t, err)
-	pb, decErr := scene.Images[0].DecodePixels()
-	require.NoError(t, decErr)
-	require.NotNil(t, pb)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scene, err := dec.Decode(bytes.NewReader(append(tt.header, tt.pixels...)), detect.DecodeOptions{})
+			require.NoError(t, err)
+			pb, decErr := scene.Images[0].DecodePixels()
+			require.NoError(t, decErr)
+			require.NotNil(t, pb)
+			assert.Len(t, pb.Data, tt.want)
+		})
+	}
 }
 
 func TestDDS_FourCC_Variants(t *testing.T) {
@@ -258,6 +248,86 @@ func TestDDS_FourCC_Variants(t *testing.T) {
 			scene, err := dec.Decode(bytes.NewReader(hdr), detect.DecodeOptions{})
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, scene.Images[0].CompressionFormat)
+		})
+	}
+}
+
+func TestDDSLegacyTopology(t *testing.T) {
+	tests := []struct {
+		name     string
+		hdr      []byte
+		topology ir.ImageTopology
+		depth    int
+		layers   int
+	}{
+		{
+			name:     "2D",
+			hdr:      buildDDSHeaderWithLayout(0, 0, 0, "", 32),
+			topology: ir.ImageTopology2D,
+			depth:    1,
+			layers:   1,
+		},
+		{
+			name:     "Volume",
+			hdr:      buildDDSHeaderWithLayout(5, 0, 0x00200000, "", 32),
+			topology: ir.ImageTopology3D,
+			depth:    5,
+			layers:   1,
+		},
+		{
+			name:     "Cubemap",
+			hdr:      buildDDSHeaderWithLayout(0, 0, 0x00000200, "", 32),
+			topology: ir.ImageTopologyCube,
+			depth:    1,
+			layers:   1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			scene, err := (&dds.Decoder{}).Decode(bytes.NewReader(tc.hdr), detect.DecodeOptions{})
+			require.NoError(t, err)
+			img := scene.Images[0]
+			assert.Equal(t, tc.topology, img.Topology)
+			assert.Equal(t, tc.depth, img.Depth)
+			assert.Equal(t, tc.layers, img.Layers)
+		})
+	}
+}
+
+func TestDDSDX10Topology(t *testing.T) {
+	build := func(dim, miscFlag, arraySize, depth uint32) []byte {
+		hdr := buildDDSHeaderWithLayout(int(depth), 0x4, 0, "DX10", 0)
+		dx10 := make([]byte, 20)
+		putU32LE(dx10[0:], 71)
+		putU32LE(dx10[4:], dim)
+		putU32LE(dx10[8:], miscFlag)
+		putU32LE(dx10[12:], arraySize)
+		return append(hdr, dx10...)
+	}
+
+	tests := []struct {
+		name     string
+		data     []byte
+		topology ir.ImageTopology
+		depth    int
+		layers   int
+	}{
+		{"2D", build(3, 0, 1, 0), ir.ImageTopology2D, 1, 1},
+		{"2DArray", build(3, 0, 4, 0), ir.ImageTopology2DArray, 1, 4},
+		{"Cube", build(3, 0x4, 1, 0), ir.ImageTopologyCube, 1, 1},
+		{"CubeArray", build(3, 0x4, 3, 0), ir.ImageTopologyCubeArray, 1, 3},
+		{"3D", build(4, 0, 1, 6), ir.ImageTopology3D, 6, 1},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			scene, err := (&dds.Decoder{}).Decode(bytes.NewReader(tc.data), detect.DecodeOptions{})
+			require.NoError(t, err)
+			img := scene.Images[0]
+			assert.Equal(t, tc.topology, img.Topology)
+			assert.Equal(t, tc.depth, img.Depth)
+			assert.Equal(t, tc.layers, img.Layers)
 		})
 	}
 }

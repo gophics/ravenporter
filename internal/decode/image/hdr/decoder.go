@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"github.com/gophics/ravenporter/detect"
+	"github.com/gophics/ravenporter/internal/decutil"
 	"github.com/gophics/ravenporter/internal/imgutil"
 	"github.com/gophics/ravenporter/internal/pixel"
 	"github.com/gophics/ravenporter/internal/pool"
@@ -43,7 +44,9 @@ func Registrations() []detect.Registration {
 }
 
 func (d *Decoder) Probe(r io.ReadSeeker) bool {
-	return imgutil.ProbeBytes(r, magicRadiance)
+	return decutil.ProbeRead(r, len(magicRadiance), func(buf []byte) bool {
+		return bytes.HasPrefix(buf, magicRadiance) || bytes.HasPrefix(buf, magicRGBE)
+	})
 }
 
 func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, error) {
@@ -52,7 +55,7 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 		return nil, imgutil.DecodeErrStr(hdrName, err)
 	}
 
-	w, h, dataOff, decErr := parseHDR(raw)
+	w, h, dataOff, xyze, decErr := parseHDR(raw)
 	if decErr != nil {
 		return nil, imgutil.DecodeErrStr(hdrName, decErr)
 	}
@@ -70,7 +73,7 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 		ColorSpace:  ir.ColorLinear,
 		MipLevels:   1,
 		Compressed:  raw,
-		PixelDecode: hdrPixelDecode(dataOff),
+		PixelDecode: hdrPixelDecode(dataOff, xyze),
 	}
 
 	return imgutil.BuildAsset(decoded, ir.FormatHDR), nil
@@ -79,12 +82,12 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 func (d *Decoder) Extensions() []string { return []string{extHDR} }
 func (d *Decoder) FormatName() string   { return hdrFormatName }
 
-func hdrPixelDecode(dataOff int) ir.PixelDecodeFunc {
+func hdrPixelDecode(dataOff int, xyze bool) ir.PixelDecodeFunc {
 	return func(d *ir.ImageAsset) (*ir.PixelBuffer, error) {
 		if d.Width == 0 || d.Height == 0 {
 			return &ir.PixelBuffer{DataType: ir.DataTypeFloat32, BitDepth: ir.BitDepth32}, nil
 		}
-		pixels, err := readAllScanlines(d.Compressed, dataOff, d.Width, d.Height)
+		pixels, err := readAllScanlines(d.Compressed, dataOff, d.Width, d.Height, xyze)
 		if err != nil {
 			return nil, err
 		}
@@ -96,17 +99,18 @@ func hdrPixelDecode(dataOff int) ir.PixelDecodeFunc {
 	}
 }
 
-func parseHDR(data []byte) (w, h, dataOff int, err error) {
+func parseHDR(data []byte) (w, h, dataOff int, xyze bool, err error) {
 	pos := skipHeader(data)
 	if pos < 0 {
-		return 0, 0, 0, errHDRBadMagic
+		return 0, 0, 0, false, errHDRBadMagic
 	}
 
+	xyze = bytes.Contains(data[:pos], []byte("FORMAT=32-bit_rle_xyze"))
 	w, h, pos = parseDimensions(data, pos)
 	if w <= 0 || h <= 0 {
-		return 0, 0, 0, errHDRNoSize
+		return 0, 0, 0, false, errHDRNoSize
 	}
-	return w, h, pos, nil
+	return w, h, pos, xyze, nil
 }
 
 func skipHeader(data []byte) int {
@@ -186,7 +190,7 @@ func parseDimensions(data []byte, pos int) (w, h, end int) {
 	return w, h, end
 }
 
-func readAllScanlines(data []byte, pos, w, h int) ([]float32, error) {
+func readAllScanlines(data []byte, pos, w, h int, xyze bool) ([]float32, error) {
 	pixels := make([]float32, w*h*rgbeChannels)
 	scanline := pool.GetBuffer(w * rgbeStride)
 	defer pool.PutBuffer(scanline)
@@ -197,19 +201,54 @@ func readAllScanlines(data []byte, pos, w, h int) ([]float32, error) {
 		if err != nil {
 			return nil, err
 		}
-		convertScanline(pixels, scanline[:w*rgbeStride], y, w)
+		convertScanline(pixels, scanline[:w*rgbeStride], y, w, xyze)
 	}
 	return pixels, nil
 }
 
-func convertScanline(dst []float32, scanline []byte, y, w int) {
+func convertScanline(dst []float32, scanline []byte, y, w int, xyze bool) {
 	for x := range w {
 		dstOff := (y*w + x) * rgbeChannels
 		srcOff := x * rgbeStride
+		if xyze {
+			dst[dstOff], dst[dstOff+1], dst[dstOff+2] = xyzeToFloat(
+				scanline[srcOff], scanline[srcOff+1], scanline[srcOff+2], scanline[srcOff+3],
+			)
+			continue
+		}
 		dst[dstOff], dst[dstOff+1], dst[dstOff+2] = pixel.RGBEToFloat(
 			scanline[srcOff], scanline[srcOff+1], scanline[srcOff+2], scanline[srcOff+3],
 		)
 	}
+}
+
+func xyzeToFloat(x, y, z, e byte) (r, g, b float32) {
+	const (
+		m00 = 3.2406
+		m01 = -1.5372
+		m02 = -0.4986
+		m10 = -0.9689
+		m11 = 1.8758
+		m12 = 0.0415
+		m20 = 0.0557
+		m21 = -0.2040
+		m22 = 1.0570
+	)
+
+	fx, fy, fz := pixel.RGBEToFloat(x, y, z, e)
+	r = m00*fx + m01*fy + m02*fz
+	g = m10*fx + m11*fy + m12*fz
+	b = m20*fx + m21*fy + m22*fz
+	if r < 0 {
+		r = 0
+	}
+	if g < 0 {
+		g = 0
+	}
+	if b < 0 {
+		b = 0
+	}
+	return r, g, b
 }
 
 func readScanline(data []byte, pos int, scanline []byte, w int) (int, error) {

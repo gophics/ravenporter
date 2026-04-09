@@ -20,6 +20,7 @@
       "Format": "ogg",
       "SampleRate": 44100,
       "Layout": "stereo",
+      "ChannelMask": 0,
       "BitDepth": 16,
       "Duration": 6104036281,
       "LoopStart": -1,

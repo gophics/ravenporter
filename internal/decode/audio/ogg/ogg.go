@@ -19,6 +19,7 @@ const (
 )
 
 var errCodebookMax = errors.New("codebook length exceeded allowed Vorbis range")
+var errChainedLayout = errors.New("chained stream layout mismatch")
 
 func Registrations() []detect.Registration {
 	return []detect.Registration{{Format: ir.FormatOGG, Decoder: &Decoder{}}}
@@ -125,6 +126,9 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 	if err := readSetupHeader(pkt.data, &setup); err != nil {
 		return nil, err
 	}
+	if err := validateChainedStreams(rawBytes, setup.sampleRate, setup.channels); err != nil {
+		return nil, err
+	}
 
 	clip := &ir.AudioClip{
 		Name:        "OGG Audio",
@@ -154,39 +158,19 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 func decodeOGGSamples(raw []byte, pcmCap int, opts detect.DecodeOptions) ([]float32, error) {
 	byteReader := bytes.NewReader(raw)
 	demux := newDemuxer(byteReader)
-	var setup vorbisSetup
-
-	pkt, err := demux.readNextPacket()
-	if err != nil {
-		return nil, decutil.DecodeErr(ir.FormatOGG, "failed to read id header", err)
-	}
-	if err := readIdentificationHeader(pkt.data, &setup); err != nil {
-		return nil, err
-	}
-
-	pkt, err = demux.readNextPacket()
-	if err != nil {
-		return nil, decutil.DecodeErr(ir.FormatOGG, "failed to read comment header", err)
-	}
-	if err := readCommentHeader(pkt.data, &setup); err != nil {
-		return nil, err
-	}
-
-	pkt, err = demux.readNextPacket()
-	if err != nil {
-		return nil, decutil.DecodeErr(ir.FormatOGG, "failed to read setup header", err)
-	}
-	if err := readSetupHeader(pkt.data, &setup); err != nil {
-		return nil, err
-	}
-
-	synth := newSynth(setup.blocksize0, setup.blocksize1)
-	fd := newFrameDecoder(&setup, synth, pkt.serial, pcmCap)
 
 	sysCtx := opts.Context
 	if sysCtx == nil {
 		sysCtx = context.Background()
 	}
+
+	var (
+		expectedRate     int
+		expectedChannels int
+		fd               *frameDecoder
+		samples          []float32
+	)
+
 	for {
 		if err := sysCtx.Err(); err != nil {
 			break
@@ -196,7 +180,31 @@ func decodeOGGSamples(raw []byte, pcmCap int, opts detect.DecodeOptions) ([]floa
 			break
 		}
 
-		if pkt.serial != fd.currentSerial {
+		if fd == nil || pkt.serial != fd.currentSerial {
+			if !pkt.bos {
+				continue
+			}
+			if fd != nil {
+				samples = appendInterleaved(samples, fd.pcmOut, expectedChannels)
+			}
+
+			var setup vorbisSetup
+			serial, setupErr := readStreamHeaders(demux, pkt, &setup, false)
+			if setupErr != nil {
+				return nil, setupErr
+			}
+			if expectedChannels == 0 {
+				expectedRate = setup.sampleRate
+				expectedChannels = setup.channels
+				if pcmCap > 0 {
+					samples = make([]float32, 0, pcmCap*expectedChannels)
+				}
+			} else if setup.sampleRate != expectedRate || setup.channels != expectedChannels {
+				return nil, decutil.DecodeErr(ir.FormatOGG, errChainedLayout.Error(), errChainedLayout)
+			}
+
+			synth := newSynth(setup.blocksize0, setup.blocksize1)
+			fd = newFrameDecoder(&setup, synth, serial, pcmCap)
 			continue
 		}
 
@@ -204,17 +212,8 @@ func decodeOGGSamples(raw []byte, pcmCap int, opts detect.DecodeOptions) ([]floa
 			continue
 		}
 	}
-
-	var samples []float32
-	if len(fd.pcmOut) > 0 {
-		totalSamples := len(fd.pcmOut[0])
-		samples = make([]float32, totalSamples*setup.channels)
-		for i := range totalSamples {
-			base := i * setup.channels
-			for ch := range setup.channels {
-				samples[base+ch] = fd.pcmOut[ch][i]
-			}
-		}
+	if fd != nil {
+		samples = appendInterleaved(samples, fd.pcmOut, expectedChannels)
 	}
 
 	if opts.MaxAudioSamples > 0 && len(samples) > opts.MaxAudioSamples {
@@ -226,3 +225,99 @@ func decodeOGGSamples(raw []byte, pcmCap int, opts detect.DecodeOptions) ([]floa
 
 func (d *Decoder) Extensions() []string { return []string{".ogg", ".oga"} }
 func (d *Decoder) FormatName() string   { return "OGG" }
+
+func validateChainedStreams(raw []byte, sampleRate, channels int) error {
+	demux := newDemuxer(bytes.NewReader(raw))
+	for {
+		pkt, err := demux.readNextPacket()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return decutil.DecodeErr(ir.FormatOGG, "failed to inspect chained streams", err)
+		}
+		if !pkt.bos {
+			continue
+		}
+
+		var setup vorbisSetup
+		if _, err := readStreamHeaders(demux, pkt, &setup, false); err != nil {
+			return err
+		}
+		if setup.sampleRate != sampleRate || setup.channels != channels {
+			return decutil.DecodeErr(ir.FormatOGG, errChainedLayout.Error(), errChainedLayout)
+		}
+	}
+}
+
+func readStreamHeaders(demux *oggDemuxer, first oggPacket, setup *vorbisSetup, parseMetadata bool) (uint32, error) {
+	if err := readIdentificationHeader(first.data, setup); err != nil {
+		return 0, err
+	}
+	serial := first.serial
+
+	comment, err := demux.readNextPacket()
+	if err != nil {
+		return 0, decutil.DecodeErr(ir.FormatOGG, "failed to read comment header", err)
+	}
+	if comment.serial != serial {
+		return 0, decutil.DecodeErr(ir.FormatOGG, "chained stream header split across serials", nil)
+	}
+	if parseMetadata {
+		if err := readCommentHeader(comment.data, setup); err != nil {
+			return 0, err
+		}
+	} else if err := validateCommentHeader(comment.data); err != nil {
+		return 0, err
+	}
+
+	setupPkt, err := demux.readNextPacket()
+	if err != nil {
+		return 0, decutil.DecodeErr(ir.FormatOGG, "failed to read setup header", err)
+	}
+	if setupPkt.serial != serial {
+		return 0, decutil.DecodeErr(ir.FormatOGG, "chained stream header split across serials", nil)
+	}
+	if err := readSetupHeader(setupPkt.data, setup); err != nil {
+		return 0, err
+	}
+
+	return serial, nil
+}
+
+func appendInterleaved(dst []float32, src [][]float32, channels int) []float32 {
+	if len(src) == 0 {
+		return dst
+	}
+	frames := len(src[0])
+	need := frames * channels
+	start := len(dst)
+	if cap(dst)-start < need {
+		grown := make([]float32, start+need, growInterleavedCap(cap(dst), need))
+		copy(grown, dst)
+		dst = grown
+	} else {
+		dst = dst[:start+need]
+	}
+	for i := range frames {
+		base := start + i*channels
+		for ch := range channels {
+			dst[base+ch] = src[ch][i]
+		}
+	}
+	return dst
+}
+
+func growInterleavedCap(capacity, need int) int {
+	const growthFactor = 2
+
+	if capacity == 0 {
+		return need
+	}
+	next := capacity * growthFactor
+	required := capacity + need
+	if next < required {
+		return required
+	}
+	return next
+}

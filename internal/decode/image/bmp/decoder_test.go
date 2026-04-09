@@ -286,6 +286,68 @@ func TestDecoder_Palette4(t *testing.T) {
 	require.NotNil(t, pb)
 }
 
+func TestDecoder_Palette1(t *testing.T) {
+	palette := []byte{
+		0x00, 0x00, 0x00, 0x00,
+		0xFF, 0xFF, 0xFF, 0x00,
+	}
+	rowSize := 4
+	pixelData := make([]byte, rowSize*2)
+	pixelData[0] = 0x80
+	pixelData[rowSize] = 0x40
+
+	hdr := buildBMPHeader(2, 2, 1, 0, 2, pixelData)
+	data := append(append([]byte{}, hdr...), palette...)
+	data = append(data, pixelData...)
+
+	scene, err := (&bmp.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Len(t, pb.Data, 16)
+}
+
+func TestDecoder_CoreHeader(t *testing.T) {
+	var buf bytes.Buffer
+	buf.Write([]byte("BM"))
+	writeU32LE(&buf, 32)
+	writeU32LE(&buf, 0)
+	writeU32LE(&buf, 26)
+	writeU32LE(&buf, 12)
+	writeU16LE(&buf, 2)
+	writeU16LE(&buf, 1)
+	writeU16LE(&buf, 1)
+	writeU16LE(&buf, 24)
+	buf.Write([]byte{0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF})
+	buf.Write([]byte{0x80, 0x00, 0x00, 0x00})
+
+	scene, err := (&bmp.Decoder{}).Decode(bytes.NewReader(buf.Bytes()), detect.DecodeOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, 2, scene.Images[0].Width)
+	assert.Equal(t, 1, scene.Images[0].Height)
+}
+
+func TestDecoder_Decode16BitBitfields(t *testing.T) {
+	pixelData := []byte{0x00, 0xF8, 0x00, 0x00}
+	hdr := buildBMPHeader(1, 1, 16, 3, 0, pixelData)
+
+	var masks bytes.Buffer
+	writeU32LE(&masks, 0xF800)
+	writeU32LE(&masks, 0x07E0)
+	writeU32LE(&masks, 0x001F)
+
+	data := append(append([]byte{}, hdr...), masks.Bytes()...)
+	data = append(data, pixelData...)
+
+	scene, err := (&bmp.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, byte(0xFF), pb.Data[0])
+}
+
 func TestDecoder_RLE8Absolute(t *testing.T) {
 	palette := make([]byte, 8)
 	palette[0], palette[1], palette[2], palette[3] = 0xFF, 0, 0, 0

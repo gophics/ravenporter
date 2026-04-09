@@ -78,6 +78,7 @@ func TestWriteReadRoundTrip(t *testing.T) {
 	compressedAudio, err := cooked.AudioClips[0].CompressedBytes()
 	require.NoError(t, err)
 	assert.Equal(t, result.Asset.AudioClips[0].Compressed, compressedAudio)
+	assert.Equal(t, result.Asset.AudioClips[0].ChannelMask, cooked.AudioClips[0].ChannelMask)
 	assert.Equal(t, result.Asset.AudioClips[0].Metadata.Artwork, cooked.AudioClips[0].Metadata.Artwork)
 	assert.NotNil(t, cooked.AudioClips[0].SampleDecode)
 	samples, err := cooked.AudioClips[0].DecodeSamples()
@@ -94,6 +95,9 @@ func TestWriteReadRoundTrip(t *testing.T) {
 	compressedImage, err := cooked.Images[0].CompressedBytes()
 	require.NoError(t, err)
 	assert.Equal(t, result.Asset.Images[0].Compressed, compressedImage)
+	assert.Equal(t, result.Asset.Images[0].Topology, cooked.Images[0].Topology)
+	assert.Equal(t, result.Asset.Images[0].Depth, cooked.Images[0].Depth)
+	assert.Equal(t, result.Asset.Images[0].Layers, cooked.Images[0].Layers)
 	assert.Equal(t, result.Asset.Images[0].SourcePath, cooked.Images[0].SourcePath)
 	require.Nil(t, cooked.Images[0].Pixels())
 	require.NotNil(t, cooked.Images[0].PixelDecode)
@@ -212,7 +216,6 @@ func TestWriteFailsOnExternalTexture(t *testing.T) {
 		})
 	}
 }
-
 
 func TestReadRejectsCorruptContainer(t *testing.T) {
 	result := &ravenporter.Result{
@@ -510,6 +513,9 @@ func fullScene() *ir.Asset {
 		Channels:          ir.ChannelRGBA,
 		ColorSpace:        ir.ColorSRGB,
 		MipLevels:         2,
+		Topology:          ir.ImageTopologyCube,
+		Depth:             1,
+		Layers:            6,
 		Compressed:        onePixelPNG(),
 		SourceFormat:      ir.FormatPNG,
 		CompressionFormat: ir.GPUCompressionNone,
@@ -630,14 +636,15 @@ func fullScene() *ir.Asset {
 			Point:       &ir.PointLight{Range: 10},
 		}},
 		AudioClips: []*ir.AudioClip{{
-			Name:       "Clip",
-			Format:     ir.AudioWAV,
-			SampleRate: 8000,
-			Layout:     ir.LayoutMono,
-			BitDepth:   ir.BitDepth16,
-			Duration:   2,
-			LoopStart:  0,
-			LoopEnd:    10,
+			Name:        "Clip",
+			Format:      ir.AudioWAV,
+			SampleRate:  8000,
+			Layout:      ir.LayoutMono,
+			ChannelMask: 0x4,
+			BitDepth:    ir.BitDepth16,
+			Duration:    2,
+			LoopStart:   0,
+			LoopEnd:     10,
 			Metadata: ir.AudioMetadata{
 				Title:   "Title",
 				Artwork: []byte{6, 7, 8},

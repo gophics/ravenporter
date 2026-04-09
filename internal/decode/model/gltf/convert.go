@@ -75,12 +75,12 @@ func convertMaterial(m *fastjson.Value, mat *ir.Material) {
 	}
 
 	if nt := m.Get(keyNormalTexture); nt != nil {
-		mat.NormalTexture = &ir.TextureRef{TextureIndex: nt.GetInt(keyIndex)}
+		mat.NormalTexture = convertTexRef(nt)
 		mat.NormalScale = getFloat32(nt, keyScale, defaultNormalScale)
 	}
 
 	if ot := m.Get(keyOcclusionTexture); ot != nil {
-		mat.OcclusionTexture = &ir.TextureRef{TextureIndex: ot.GetInt(keyIndex)}
+		mat.OcclusionTexture = convertTexRef(ot)
 		mat.OcclusionStrength = getFloat32(ot, keyStrength, defaultOccStrength)
 	}
 
@@ -296,10 +296,20 @@ func convertTexRef(v *fastjson.Value) *ir.TextureRef {
 	if v == nil {
 		return nil
 	}
-	return &ir.TextureRef{
+	ref := &ir.TextureRef{
 		TextureIndex: v.GetInt(keyIndex),
 		UVSet:        v.GetInt(keyTexCoord),
+		Tiling:       [2]float32{1, 1},
 	}
+	if ext := v.Get(keyExtensions, keyKHRTextureTransform); ext != nil {
+		ref.Offset = getFloat2(ext.GetArray(keyOffset), [2]float32{})
+		ref.Tiling = getFloat2(ext.GetArray(keyScale), [2]float32{1, 1})
+		ref.Rotation = getFloat32(ext, keyRotation, 0)
+		if texCoord := ext.Get(keyTexCoord); texCoord != nil {
+			ref.UVSet = texCoord.GetInt()
+		}
+	}
+	return ref
 }
 
 func (d *doc) convertCameras() []*ir.Camera {
@@ -688,6 +698,16 @@ func getFloat3(arr []*fastjson.Value, def [3]float32) [3]float32 {
 		float32(arr[0].GetFloat64()),
 		float32(arr[1].GetFloat64()),
 		float32(arr[2].GetFloat64()),
+	}
+}
+
+func getFloat2(arr []*fastjson.Value, def [2]float32) [2]float32 {
+	if len(arr) < elemVec2 {
+		return def
+	}
+	return [2]float32{
+		float32(arr[0].GetFloat64()),
+		float32(arr[1].GetFloat64()),
 	}
 }
 

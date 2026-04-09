@@ -30,9 +30,26 @@ func createSyntheticHDR() []byte {
 }
 
 func TestHDRProbe(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+		want bool
+	}{
+		{name: "Radiance", data: createSyntheticHDR(), want: true},
+		{
+			name: "RGBE",
+			data: []byte("#?RGBE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n\x80\x80\x80\x81"),
+			want: true,
+		},
+		{name: "Invalid", data: []byte("no"), want: false},
+	}
+
 	dec := &hdr.Decoder{}
-	assert.True(t, dec.Probe(bytes.NewReader(createSyntheticHDR())))
-	assert.False(t, dec.Probe(bytes.NewReader([]byte("no"))))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, dec.Probe(bytes.NewReader(tt.data)))
+		})
+	}
 }
 
 func TestHDRDecode(t *testing.T) {
@@ -173,29 +190,61 @@ func TestHDRTruncatedData(t *testing.T) {
 	assert.Error(t, decErr)
 }
 
-func TestHDRBadMagic(t *testing.T) {
+func TestHDRDecodeInputs(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    []byte
+		wantErr bool
+		check   func(*testing.T, *ir.ImageAsset)
+	}{
+		{
+			name:    "BadMagic",
+			data:    []byte("NOT_HDR\n"),
+			wantErr: true,
+		},
+		{
+			name:    "NoSize",
+			data:    []byte("#?RADIANCE\n\n\n"),
+			wantErr: true,
+		},
+		{
+			name: "RGBEMagic",
+			data: []byte("#?RGBE\nFORMAT=32-bit_rle_rgbe\n\n-Y 2 +X 2\n" +
+				"\x01\x02\x03\x04\x05\x06\x07\x08" +
+				"\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10"),
+			check: func(t *testing.T, img *ir.ImageAsset) {
+				assert.Equal(t, 2, img.Width)
+				assert.Equal(t, 2, img.Height)
+			},
+		},
+	}
+
 	dec := &hdr.Decoder{}
-	_, err := dec.Decode(bytes.NewReader([]byte("NOT_HDR\n")), detect.DecodeOptions{})
-	assert.Error(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scene, err := dec.Decode(bytes.NewReader(tt.data), detect.DecodeOptions{})
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Len(t, scene.Images, 1)
+			tt.check(t, scene.Images[0])
+		})
+	}
 }
 
-func TestHDRNoSize(t *testing.T) {
-	dec := &hdr.Decoder{}
-	_, err := dec.Decode(bytes.NewReader([]byte("#?RADIANCE\n\n\n")), detect.DecodeOptions{})
-	assert.Error(t, err)
-}
-
-func TestHDRRGBEMagic(t *testing.T) {
+func TestHDRXYZE(t *testing.T) {
 	var b bytes.Buffer
-	b.WriteString("#?RGBE\n")
-	b.WriteString("FORMAT=32-bit_rle_rgbe\n")
+	b.WriteString("#?RADIANCE\n")
+	b.WriteString("FORMAT=32-bit_rle_xyze\n")
 	b.WriteString("\n")
-	b.WriteString("-Y 2 +X 2\n")
-	b.Write([]byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08})
-	b.Write([]byte{0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10})
+	b.WriteString("-Y 1 +X 1\n")
+	b.Write([]byte{0x80, 0x80, 0x80, 0x81})
 
-	dec := &hdr.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(b.Bytes()), detect.DecodeOptions{})
+	scene, err := (&hdr.Decoder{}).Decode(bytes.NewReader(b.Bytes()), detect.DecodeOptions{})
 	require.NoError(t, err)
-	assert.Equal(t, 2, scene.Images[0].Width)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.Len(t, pb.Data, 12)
 }

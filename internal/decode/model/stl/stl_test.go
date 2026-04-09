@@ -191,6 +191,21 @@ func TestProbe(t *testing.T) {
 	assert.True(t, dec.Probe(bytes.NewReader(data)))
 }
 
+func TestBinaryWithSolidHeaderPrefersBinary(t *testing.T) {
+	data := buildBinarySTL([][4][3]float32{
+		{{0, 0, 1}, {0, 0, 0}, {1, 0, 0}, {0, 1, 0}},
+	})
+	copy(data[:5], "solid")
+
+	dec := &stl.Decoder{}
+	require.True(t, dec.Probe(bytes.NewReader(data)))
+
+	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	require.Len(t, scene.Meshes, 1)
+	assert.Equal(t, 3, scene.Meshes[0].Primitives[0].Data.VertexCount)
+}
+
 func TestProbeEmpty(t *testing.T) {
 	dec := &stl.Decoder{}
 	assert.False(t, dec.Probe(bytes.NewReader(nil)))

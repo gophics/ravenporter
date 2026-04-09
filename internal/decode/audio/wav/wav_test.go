@@ -10,6 +10,7 @@ import (
 	"github.com/gophics/ravenporter/detect"
 	"github.com/gophics/ravenporter/ir"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWAV_Registered(t *testing.T) {
@@ -18,10 +19,23 @@ func TestWAV_Registered(t *testing.T) {
 }
 
 func TestWAV_Probe(t *testing.T) {
-	d := &Decoder{}
-	riff := []byte("RIFF\x00\x00\x00\x00WAVE")
-	assert.True(t, d.Probe(bytes.NewReader(riff)))
-	assert.False(t, d.Probe(bytes.NewReader([]byte("fLaC"))))
+	tests := []struct {
+		name string
+		data []byte
+		want bool
+	}{
+		{name: "RIFF", data: []byte("RIFF\x00\x00\x00\x00WAVE"), want: true},
+		{name: "RF64", data: []byte("RF64\xFF\xFF\xFF\xFFWAVE"), want: true},
+		{name: "BW64", data: []byte("BW64\xFF\xFF\xFF\xFFWAVE"), want: true},
+		{name: "Invalid", data: []byte("fLaC"), want: false},
+	}
+
+	dec := &Decoder{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, dec.Probe(bytes.NewReader(tt.data)))
+		})
+	}
 }
 
 func TestWAV_ParseWAV(t *testing.T) {
@@ -100,7 +114,7 @@ func TestADPCM_Decode(t *testing.T) {
 		samplesPerBlock: 500,
 		adpcmCoeffs:     [][2]int{{256, 0}, {512, -256}},
 		r:               &testReadSeeker{bytes.NewReader(data)},
-		dataSize:        uint32(len(data)),
+		dataSize:        int64(len(data)),
 	}
 
 	samples, err := decodeADPCMSamples(hdr)
@@ -125,7 +139,7 @@ func BenchmarkADPCM_Decode(b *testing.B) {
 		samplesPerBlock: 500,
 		adpcmCoeffs:     [][2]int{{256, 0}, {512, -256}},
 		r:               &testReadSeeker{bytes.NewReader(data)},
-		dataSize:        uint32(len(data)),
+		dataSize:        int64(len(data)),
 	}
 	b.ReportAllocs()
 	for b.Loop() {
@@ -176,41 +190,112 @@ func writeU32LE(buf *bytes.Buffer, v uint32) {
 	buf.WriteByte(byte(v >> 24))
 }
 
-func TestWAV_PCM8bit(t *testing.T) {
-	pcm := []byte{128, 255, 0}
-	data := buildWAV(1, 1, 44100, 8, pcm, nil)
-	scene := wavDecodeOK(t, data)
-	assert.Equal(t, ir.BitDepth8, scene.AudioClips[0].BitDepth)
-	assert.InDelta(t, 0.0, getSamples(t, scene.AudioClips[0])[0], 0.02)
+func writeU64LE(buf *bytes.Buffer, v uint64) {
+	writeU32LE(buf, uint32(v))
+	writeU32LE(buf, uint32(v>>32))
 }
 
-func TestWAV_PCM32bit(t *testing.T) {
-	pcm := make([]byte, 4)
-	pcm[0], pcm[1], pcm[2], pcm[3] = 0xFF, 0xFF, 0xFF, 0x7F // max int32 LE
-	data := buildWAV(1, 1, 44100, 32, pcm, nil)
-	scene := wavDecodeOK(t, data)
-	assert.InDelta(t, 1.0, getSamples(t, scene.AudioClips[0])[0], 0.02)
-}
+func TestWAV_DecodeVariants(t *testing.T) {
+	buildExtensible := func() []byte {
+		const fmtSize = uint32(40)
+		const dataSize = uint32(4)
+		riffSize := 4 + 8 + fmtSize + 8 + dataSize
 
-func TestWAV_IEEEFloat(t *testing.T) {
-	pcm := []byte{0x00, 0x00, 0x00, 0x3F} // 0.5 in float32 LE
-	data := buildWAV(3, 1, 44100, 32, pcm, nil)
-	scene := wavDecodeOK(t, data)
-	assert.InDelta(t, 0.5, getSamples(t, scene.AudioClips[0])[0], 0.02)
-}
+		var buf bytes.Buffer
+		buf.Write([]byte("RIFF"))
+		writeU32LE(&buf, riffSize)
+		buf.Write([]byte("WAVE"))
 
-func TestWAV_Alaw(t *testing.T) {
-	pcm := []byte{0xD5, 0x55}
-	data := buildWAV(6, 1, 8000, 8, pcm, nil)
-	scene := wavDecodeOK(t, data)
-	assert.NotEqual(t, float32(0), getSamples(t, scene.AudioClips[0])[0])
-}
+		buf.Write([]byte("fmt "))
+		writeU32LE(&buf, fmtSize)
+		writeU16LE(&buf, 0xFFFE)
+		writeU16LE(&buf, 1)
+		writeU32LE(&buf, 44100)
+		writeU32LE(&buf, 44100*2)
+		writeU16LE(&buf, 2)
+		writeU16LE(&buf, 16)
+		writeU16LE(&buf, 22)
+		writeU16LE(&buf, 16)
+		writeU32LE(&buf, 0x3)
+		writeU16LE(&buf, 1)
+		buf.Write(make([]byte, 14))
 
-func TestWAV_Ulaw(t *testing.T) {
-	pcm := []byte{0xFF, 0x00}
-	data := buildWAV(7, 1, 8000, 8, pcm, nil)
-	scene := wavDecodeOK(t, data)
-	assert.Len(t, getSamples(t, scene.AudioClips[0]), 2)
+		buf.Write([]byte("data"))
+		writeU32LE(&buf, dataSize)
+		buf.Write([]byte{0x00, 0x40, 0x00, 0xC0})
+		return buf.Bytes()
+	}
+
+	tests := []struct {
+		name  string
+		data  []byte
+		check func(*testing.T, *ir.AudioClip)
+	}{
+		{
+			name: "PCM8",
+			data: buildWAV(1, 1, 44100, 8, []byte{128, 255, 0}, nil),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.Equal(t, ir.BitDepth8, clip.BitDepth)
+				assert.InDelta(t, 0.0, getSamples(t, clip)[0], 0.02)
+			},
+		},
+		{
+			name: "PCM24",
+			data: buildWAV(1, 1, 44100, 24, []byte{0xFF, 0xFF, 0x7F}, nil),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.InDelta(t, 1.0, getSamples(t, clip)[0], 0.02)
+			},
+		},
+		{
+			name: "PCM32",
+			data: buildWAV(1, 1, 44100, 32, []byte{0xFF, 0xFF, 0xFF, 0x7F}, nil),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.InDelta(t, 1.0, getSamples(t, clip)[0], 0.02)
+			},
+		},
+		{
+			name: "IEEEFloat",
+			data: buildWAV(3, 1, 44100, 32, []byte{0x00, 0x00, 0x00, 0x3F}, nil),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.InDelta(t, 0.5, getSamples(t, clip)[0], 0.02)
+			},
+		},
+		{
+			name: "ALaw",
+			data: buildWAV(6, 1, 8000, 8, []byte{0xD5, 0x55}, nil),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.NotEqual(t, float32(0), getSamples(t, clip)[0])
+			},
+		},
+		{
+			name: "MuLaw",
+			data: buildWAV(7, 1, 8000, 8, []byte{0xFF, 0x00}, nil),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.Len(t, getSamples(t, clip), 2)
+			},
+		},
+		{
+			name: "Stereo",
+			data: buildWAV(1, 2, 44100, 16, []byte{0x00, 0x40, 0x00, 0xC0}, nil),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.Equal(t, ir.LayoutStereo, clip.Layout)
+			},
+		},
+		{
+			name: "Extensible",
+			data: buildExtensible(),
+			check: func(t *testing.T, clip *ir.AudioClip) {
+				assert.Equal(t, uint32(0x3), clip.ChannelMask)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scene := wavDecodeOK(t, tt.data)
+			tt.check(t, scene.AudioClips[0])
+		})
+	}
 }
 
 func TestWAV_LISTMetadata(t *testing.T) {
@@ -236,6 +321,104 @@ func buildINFO() []byte {
 	return buf.Bytes()
 }
 
+type cuePointSpec struct {
+	id     uint32
+	sample uint32
+}
+
+func buildCueChunk(count uint32, points ...cuePointSpec) []byte {
+	var data bytes.Buffer
+	writeU32LE(&data, count)
+	for _, point := range points {
+		writeU32LE(&data, point.id)
+		writeU32LE(&data, 0)
+		data.WriteString("data")
+		writeU32LE(&data, 0)
+		writeU32LE(&data, 0)
+		writeU32LE(&data, point.sample)
+	}
+
+	var chunk bytes.Buffer
+	chunk.WriteString("cue ")
+	writeU32LE(&chunk, uint32(data.Len()))
+	chunk.Write(data.Bytes())
+	return chunk.Bytes()
+}
+
+func buildADTLLabelChunk(id uint32, label string) []byte {
+	var labl bytes.Buffer
+	writeU32LE(&labl, id)
+	labl.WriteString(label)
+	labl.WriteByte(0)
+
+	var list bytes.Buffer
+	list.WriteString("LIST")
+
+	var data bytes.Buffer
+	data.WriteString("adtl")
+	data.WriteString("labl")
+	writeU32LE(&data, uint32(labl.Len()))
+	data.Write(labl.Bytes())
+	if labl.Len()%2 != 0 {
+		data.WriteByte(0)
+	}
+
+	writeU32LE(&list, uint32(data.Len()))
+	list.Write(data.Bytes())
+	return list.Bytes()
+}
+
+func buildWAV64(container string, channelMask uint32, pcm []byte, extra ...[]byte) []byte {
+	fmtSize := uint32(40)
+	dataSize := uint64(len(pcm))
+	ds64Size := uint32(28)
+	payloadSize := uint64(4 + 8 + fmtSize + 8)
+	payloadSize += dataSize
+	for _, chunk := range extra {
+		payloadSize += uint64(len(chunk))
+	}
+	riffSize := payloadSize + 8 + uint64(ds64Size)
+
+	var buf bytes.Buffer
+	buf.WriteString(container)
+	writeU32LE(&buf, ^uint32(0))
+	buf.WriteString("WAVE")
+
+	buf.WriteString("ds64")
+	writeU32LE(&buf, ds64Size)
+	writeU64LE(&buf, riffSize)
+	writeU64LE(&buf, dataSize)
+	writeU64LE(&buf, 0)
+	writeU32LE(&buf, 0)
+
+	buf.WriteString("fmt ")
+	writeU32LE(&buf, fmtSize)
+	writeU16LE(&buf, 0xFFFE)
+	writeU16LE(&buf, 2)
+	writeU32LE(&buf, 48000)
+	writeU32LE(&buf, 48000*4)
+	writeU16LE(&buf, 4)
+	writeU16LE(&buf, 16)
+	writeU16LE(&buf, 22)
+	writeU16LE(&buf, 16)
+	writeU32LE(&buf, channelMask)
+	writeU16LE(&buf, 1)
+	buf.Write(make([]byte, 14))
+
+	for _, chunk := range extra {
+		buf.Write(chunk)
+	}
+
+	buf.WriteString("data")
+	writeU32LE(&buf, ^uint32(0))
+	buf.Write(pcm)
+	if len(pcm)%2 != 0 {
+		buf.WriteByte(0)
+	}
+
+	return buf.Bytes()
+}
+
 func TestWAV_SmplLoop(t *testing.T) {
 	var smpl bytes.Buffer
 	smpl.Write([]byte("smpl"))
@@ -255,53 +438,51 @@ func TestWAV_SmplLoop(t *testing.T) {
 	assert.Equal(t, 200, scene.AudioClips[0].LoopEnd)
 }
 
-func TestWAV_PCM24bit(t *testing.T) {
-	pcm := []byte{0xFF, 0xFF, 0x7F} // max int24 LE
-	data := buildWAV(1, 1, 44100, 24, pcm, nil)
+func TestWAV_CuePoints(t *testing.T) {
+	pcm := []byte{0, 0, 0, 0}
+	data := buildWAV(1, 1, 44100, 16, pcm, buildCueChunk(2,
+		cuePointSpec{id: 7, sample: 100},
+		cuePointSpec{id: 11, sample: 250},
+	))
+
 	scene := wavDecodeOK(t, data)
-	assert.InDelta(t, 1.0, getSamples(t, scene.AudioClips[0])[0], 0.02)
+	require.Len(t, scene.AudioClips[0].Metadata.CuePoints, 2)
+	assert.Equal(t, "7", scene.AudioClips[0].Metadata.CuePoints[0].Name)
+	assert.Equal(t, 100, scene.AudioClips[0].Metadata.CuePoints[0].Sample)
+	assert.Equal(t, "11", scene.AudioClips[0].Metadata.CuePoints[1].Name)
+	assert.Equal(t, 250, scene.AudioClips[0].Metadata.CuePoints[1].Sample)
 }
 
-func TestWAV_Stereo(t *testing.T) {
-	pcm := []byte{0x00, 0x40, 0x00, 0xC0} // two 16-bit samples
-	data := buildWAV(1, 2, 44100, 16, pcm, nil)
+func TestWAV_CuePointsTruncatedRecordTable(t *testing.T) {
+	pcm := []byte{0, 0, 0, 0}
+	data := buildWAV(1, 1, 44100, 16, pcm, buildCueChunk(2, cuePointSpec{id: 9, sample: 320}))
+
 	scene := wavDecodeOK(t, data)
-	assert.Equal(t, ir.LayoutStereo, scene.AudioClips[0].Layout)
+	require.Len(t, scene.AudioClips[0].Metadata.CuePoints, 1)
+	assert.Equal(t, "9", scene.AudioClips[0].Metadata.CuePoints[0].Name)
+	assert.Equal(t, 320, scene.AudioClips[0].Metadata.CuePoints[0].Sample)
 }
 
-func TestWAV_Extensible(t *testing.T) {
-	// Build an extensible fmt chunk (format 0xFFFE) with PCM subformat
-	fmtSize := uint32(40)
-	dataSize := uint32(4)
-	riffSize := 4 + 8 + fmtSize + 8 + dataSize
+func TestWAV_CueLabels(t *testing.T) {
+	pcm := []byte{0, 0, 0, 0}
+	data := buildWAV(1, 1, 44100, 16, pcm,
+		append(buildCueChunk(1, cuePointSpec{id: 7, sample: 100}), buildADTLLabelChunk(7, "Intro")...))
 
-	var buf bytes.Buffer
-	buf.Write([]byte("RIFF"))
-	writeU32LE(&buf, riffSize)
-	buf.Write([]byte("WAVE"))
+	scene := wavDecodeOK(t, data)
+	require.Len(t, scene.AudioClips[0].Metadata.CuePoints, 1)
+	assert.Equal(t, "Intro", scene.AudioClips[0].Metadata.CuePoints[0].Name)
+	assert.Equal(t, 100, scene.AudioClips[0].Metadata.CuePoints[0].Sample)
+}
 
-	buf.Write([]byte("fmt "))
-	writeU32LE(&buf, fmtSize)
-	writeU16LE(&buf, 0xFFFE)    // extensible
-	writeU16LE(&buf, 1)         // channels
-	writeU32LE(&buf, 44100)     // sample rate
-	writeU32LE(&buf, 44100*2)   // bytes/sec
-	writeU16LE(&buf, 2)         // block align
-	writeU16LE(&buf, 16)        // bits per sample
-	writeU16LE(&buf, 22)        // cbSize
-	writeU16LE(&buf, 16)        // validBitsPerSample
-	writeU32LE(&buf, 0)         // channel mask
-	writeU16LE(&buf, 1)         // subformat PCM
-	buf.Write(make([]byte, 14)) // rest of GUID
-
-	buf.Write([]byte("data"))
-	writeU32LE(&buf, dataSize)
-	buf.Write([]byte{0x00, 0x40, 0x00, 0xC0})
-
-	d := &Decoder{}
-	scene, err := d.Decode(bytes.NewReader(buf.Bytes()), detect.DecodeOptions{})
-	assert.NoError(t, err)
-	assert.NotNil(t, scene)
+func TestWAV_RF64AndBW64(t *testing.T) {
+	pcm := []byte{0x00, 0x40, 0x00, 0xC0}
+	for _, container := range []string{"RF64", "BW64"} {
+		t.Run(container, func(t *testing.T) {
+			scene := wavDecodeOK(t, buildWAV64(container, 0x3, pcm, buildADTLLabelChunk(0, "unused")))
+			assert.Equal(t, uint32(0x3), scene.AudioClips[0].ChannelMask)
+			assert.Equal(t, ir.LayoutStereo, scene.AudioClips[0].Layout)
+		})
+	}
 }
 
 func TestWAV_ADPCMFmt(t *testing.T) {
@@ -352,9 +533,7 @@ func TestWAV_ADPCMFmt(t *testing.T) {
 func getSamples(t testing.TB, c *ir.AudioClip) []float32 {
 	t.Helper()
 	s, err := c.DecodeSamples()
-	if err != nil {
-		t.Fatalf("failed to decode samples: %v", err)
-	}
+	require.NoError(t, err)
 	return s
 }
 

@@ -75,6 +75,11 @@ type testMaterial struct {
 	hasSpec             bool
 }
 
+type testFaceMat struct {
+	name  string
+	faces []uint16
+}
+
 type testObject struct {
 	name          string
 	kind          string
@@ -82,6 +87,7 @@ type testObject struct {
 	faces         [][3]uint16
 	uvs           [][2]float32
 	matName       string
+	faceMats      []testFaceMat
 	hasMatrix     bool
 	matrix        [12]float32
 	pos           [3]float32
@@ -168,9 +174,21 @@ func buildTestScene(opts testOpts) *bytes.Reader {
 				_ = binary.Write(&faceBuf, binary.LittleEndian, f)
 				_ = binary.Write(&faceBuf, binary.LittleEndian, uint16(0))
 			}
-			if obj.matName != "" {
+			faceMats := obj.faceMats
+			if len(faceMats) == 0 && obj.matName != "" {
+				allFaces := make([]uint16, len(obj.faces))
+				for j := range obj.faces {
+					allFaces[j] = uint16(j)
+				}
+				faceMats = []testFaceMat{{name: obj.matName, faces: allFaces}}
+			}
+			for _, group := range faceMats {
 				var faceMatBuf bytes.Buffer
-				writeCString(&faceMatBuf, obj.matName)
+				writeCString(&faceMatBuf, group.name)
+				_ = binary.Write(&faceMatBuf, binary.LittleEndian, uint16(len(group.faces)))
+				for _, faceIdx := range group.faces {
+					_ = binary.Write(&faceMatBuf, binary.LittleEndian, faceIdx)
+				}
 				writeChunk(&faceBuf, tFaceMat, faceMatBuf.Bytes())
 			}
 			writeChunk(&triMesh, tFaces, faceBuf.Bytes())
@@ -448,6 +466,33 @@ func TestDecode3DS(t *testing.T) {
 				assert.Len(t, sc.Cameras, 1)
 				assert.Len(t, sc.Nodes, 3)
 				assert.Equal(t, ir.Format3DS, sc.Metadata.SourceFormat)
+			},
+		},
+		{
+			name: "PerFaceMaterialGroups",
+			opts: testOpts{
+				materials: []testMaterial{
+					{name: "red", diffR: 255, diffG: 0, diffB: 0},
+					{name: "blue", diffR: 0, diffG: 0, diffB: 255},
+				},
+				objects: []testObject{{
+					name:  "split",
+					kind:  kindMesh,
+					verts: [][3]float32{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+					faces: [][3]uint16{{0, 1, 2}, {1, 3, 2}},
+					faceMats: []testFaceMat{
+						{name: "red", faces: []uint16{0}},
+						{name: "blue", faces: []uint16{1}},
+					},
+				}},
+			},
+			check: func(t *testing.T, sc *ir.Asset) {
+				require.Len(t, sc.Meshes, 1)
+				require.Len(t, sc.Meshes[0].Primitives, 2)
+				assert.Equal(t, 0, sc.Meshes[0].Primitives[0].MaterialIndex)
+				assert.Equal(t, 1, sc.Meshes[0].Primitives[1].MaterialIndex)
+				assert.Len(t, sc.Meshes[0].Primitives[0].Data.Indices, 3)
+				assert.Len(t, sc.Meshes[0].Primitives[1].Data.Indices, 3)
 			},
 		},
 		{

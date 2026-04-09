@@ -298,8 +298,78 @@ func TestOGG_DecodeStereo16(t *testing.T) {
 	assert.Greater(t, len(samples), 0)
 }
 
+func TestOGG_DecodeChainedStreams(t *testing.T) {
+	data, err := os.ReadFile("../testdata/minimal.ogg")
+	if err != nil {
+		t.Skip("testdata not available")
+	}
+
+	dec := &Decoder{}
+	single, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	singleSamples, err := single.AudioClips[0].DecodeSamples()
+	require.NoError(t, err)
+
+	chained := append(append([]byte(nil), data...), rewriteOGGSerial(data, 0x10203040)...)
+	asset, err := dec.Decode(bytes.NewReader(chained), detect.DecodeOptions{})
+	require.NoError(t, err)
+	require.Len(t, asset.AudioClips, 1)
+
+	samples, err := asset.AudioClips[0].DecodeSamples()
+	require.NoError(t, err)
+	assert.Len(t, samples, len(singleSamples)*2)
+}
+
+func TestOGG_RejectsMismatchedChainedStreams(t *testing.T) {
+	first, err := os.ReadFile("../testdata/minimal.ogg")
+	if err != nil {
+		t.Skip("testdata not available")
+	}
+
+	second := rewriteVorbisSampleRate(first, 12345)
+	chained := append(append([]byte(nil), first...), rewriteOGGSerial(second, 0x55667788)...)
+	_, err = (&Decoder{}).Decode(bytes.NewReader(chained), detect.DecodeOptions{})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, errChainedLayout.Error())
+}
+
 func TestOGG_BuildHuffmanTree_Empty(t *testing.T) {
 	tree, err := buildHuffmanTree(nil)
 	assert.NotNil(t, tree)
 	assert.NoError(t, err)
+}
+
+func rewriteOGGSerial(data []byte, serial uint32) []byte {
+	out := append([]byte(nil), data...)
+	for pos := 0; pos+pageHeaderSize <= len(out); {
+		if string(out[pos:pos+4]) != pageMagic {
+			break
+		}
+		segments := int(out[pos+26])
+		lacingStart := pos + pageHeaderSize
+		if lacingStart+segments > len(out) {
+			break
+		}
+		bodySize := 0
+		for _, l := range out[lacingStart : lacingStart+segments] {
+			bodySize += int(l)
+		}
+		pageSize := pageHeaderSize + segments + bodySize
+		if pos+pageSize > len(out) {
+			break
+		}
+		binary.LittleEndian.PutUint32(out[pos+14:pos+18], serial)
+		pos += pageSize
+	}
+	return out
+}
+
+func rewriteVorbisSampleRate(data []byte, sampleRate uint32) []byte {
+	out := append([]byte(nil), data...)
+	marker := append([]byte{headerIDType}, []byte(vorbisString)...)
+	offset := bytes.Index(out, marker)
+	if offset >= 0 && offset+sampleRateEnd <= len(out) {
+		binary.LittleEndian.PutUint32(out[offset+sampleRateOff:offset+sampleRateEnd], sampleRate)
+	}
+	return out
 }

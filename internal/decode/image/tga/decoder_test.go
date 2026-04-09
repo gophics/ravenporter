@@ -186,6 +186,30 @@ func TestTGA32Bit(t *testing.T) {
 	assert.Equal(t, byte(0x80), pb.Data[3]) // A
 }
 
+func TestTGAGrayscale(t *testing.T) {
+	data := buildTGA(3, 2, 1, 8, 0x20, []byte{0x20, 0xE0})
+	scene, err := (&tga.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, byte(0x20), pb.Data[0])
+	assert.Equal(t, byte(0x20), pb.Data[1])
+	assert.Equal(t, byte(0x20), pb.Data[2])
+	assert.Equal(t, byte(0xE0), pb.Data[4])
+}
+
+func TestTGAGrayscaleAlpha16Bit(t *testing.T) {
+	data := buildTGA(3, 1, 1, 16, 0x20, []byte{0x40, 0x7F})
+	scene, err := (&tga.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, byte(0x40), pb.Data[0])
+	assert.Equal(t, byte(0x7F), pb.Data[3])
+}
+
 func TestTGAFlipVertical(t *testing.T) {
 	// 2x2 bottom-origin (descriptor=0) should flip
 	pixels := []byte{
@@ -202,6 +226,22 @@ func TestTGAFlipVertical(t *testing.T) {
 	require.NotNil(t, pb)
 	// After flip, top row should be row 1 (red, yellow)
 	assert.Equal(t, byte(0xFF), pb.Data[0]) // R of first pixel
+}
+
+func TestTGAFlipHorizontal(t *testing.T) {
+	pixels := []byte{
+		0x00, 0x00, 0xFF,
+		0x00, 0xFF, 0x00,
+	}
+	data := buildTGA(2, 2, 1, 24, 0x30, pixels)
+	scene, err := (&tga.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, byte(0x00), pb.Data[0])
+	assert.Equal(t, byte(0xFF), pb.Data[1])
+	assert.Equal(t, byte(0x00), pb.Data[2])
 }
 
 func TestTGAColorMapped(t *testing.T) {

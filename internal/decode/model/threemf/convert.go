@@ -12,7 +12,9 @@ import (
 const (
 	colorScale       = 1.0 / 255.0
 	vertsPerTri      = 3
+	scaleMicrometer  = 0.000001
 	scaleMillimeter  = 0.001
+	scaleCentimeter  = 0.01
 	scaleInch        = 0.0254
 	scaleFoot        = 0.3048
 	scaleMeter       = 1.0
@@ -234,8 +236,12 @@ func colorToMaterial(name string, c color.RGBA) *ir.Material {
 
 func unitScale(u go3mf.Units) float64 {
 	switch u {
+	case go3mf.UnitMicrometer:
+		return scaleMicrometer
 	case go3mf.UnitMillimeter:
 		return scaleMillimeter
+	case go3mf.UnitCentimeter:
+		return scaleCentimeter
 	case go3mf.UnitInch:
 		return scaleInch
 	case go3mf.UnitFoot:

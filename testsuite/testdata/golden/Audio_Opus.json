@@ -20,6 +20,7 @@
       "Format": "opus",
       "SampleRate": 48000,
       "Layout": "stereo",
+      "ChannelMask": 0,
       "BitDepth": 16,
       "Duration": 13500000,
       "LoopStart": -1,

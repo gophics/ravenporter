@@ -13,11 +13,12 @@ import (
 const (
 	formatName = "TTF"
 	extTTF     = ".ttf"
+	extTTC     = ".ttc"
 )
 
 var magic = []byte{0x00, 0x01, 0x00, 0x00}
 
-var extensions = []string{extTTF}
+var extensions = []string{extTTF, extTTC}
 
 // Decoder implements detect.Decoder for TrueType fonts.
 type Decoder struct{}
@@ -38,18 +39,18 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 	}
 
 	if len(raw) < fntutil.SFNTHeaderSize || !bytes.Equal(raw[:4], magic) {
-		return nil, decutil.DecodeErr(ir.FormatTTF, "invalid sfnt header", nil)
+		if !fntutil.HasCollectionMagic(raw) {
+			return nil, decutil.DecodeErr(ir.FormatTTF, "invalid sfnt header", nil)
+		}
 	}
 
-	f := &ir.Font{
-		Name:   formatName,
-		Format: ir.FontTTF,
-		Vector: &ir.VectorFontData{RawData: raw},
+	fonts, err := fntutil.BuildFonts(raw, ir.FontTTF, formatName)
+	if err != nil {
+		return nil, decutil.DecodeErr(ir.FormatTTF, "invalid font collection", err)
 	}
-	fntutil.ParseSFNTMetrics(raw, f)
 
 	return &ir.Asset{
-		Fonts:    []*ir.Font{f},
+		Fonts:    fonts,
 		Metadata: ir.AssetMetadata{SourceFormat: ir.FormatTTF},
 	}, nil
 }

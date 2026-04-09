@@ -21,6 +21,7 @@ func DecodeErrStr(name string, cause error) error {
 
 // BuildAsset wraps an ImageAsset into an Asset.
 func BuildAsset(img *ir.ImageAsset, format ir.FormatID) *ir.Asset {
+	img.NormalizeTopology()
 	img.SourceFormat = format
 	asset := ir.NewAsset(format)
 	asset.Images = []*ir.ImageAsset{img}

@@ -207,11 +207,22 @@ func readIdentificationHeader(packet []byte, setup *vorbisSetup) error {
 }
 
 func readCommentHeader(packet []byte, setup *vorbisSetup) error {
+	return parseCommentHeader(packet, setup, true)
+}
+
+func validateCommentHeader(packet []byte) error {
+	return parseCommentHeader(packet, nil, false)
+}
+
+func parseCommentHeader(packet []byte, setup *vorbisSetup, parseMetadata bool) error {
 	if len(packet) < minCommentHeaderSize {
 		return decutil.DecodeErr(ir.FormatOGG, "comment header too small", nil)
 	}
 	if packet[0] != headerCommentType || string(packet[1:headerStringOff]) != vorbisString {
 		return decutil.DecodeErr(ir.FormatOGG, "missing vorbis comment string", nil)
+	}
+	if !parseMetadata {
+		return nil
 	}
 
 	setup.audioMetadata = decutil.ParseVorbisComment(packet[headerStringOff:])

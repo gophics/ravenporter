@@ -44,8 +44,8 @@ func TestRegistrationsExposeBuiltInMetadata(t *testing.T) {
 		ir.FormatFLAC:    {name: "FLAC", extensions: []string{".flac"}},
 		ir.FormatAIFF:    {name: "AIFF", extensions: []string{".aiff", ".aif"}},
 		ir.FormatOpus:    {name: "Opus", extensions: []string{".opus"}},
-		ir.FormatTTF:     {name: "TTF", extensions: []string{".ttf"}},
-		ir.FormatOTF:     {name: "OTF", extensions: []string{".otf"}},
+		ir.FormatTTF:     {name: "TTF", extensions: []string{".ttf", ".ttc"}},
+		ir.FormatOTF:     {name: "OTF", extensions: []string{".otf", ".otc"}},
 		ir.FormatWOFF:    {name: "WOFF", extensions: []string{".woff"}},
 		ir.FormatWOFF2:   {name: "WOFF2", extensions: []string{".woff2"}},
 	}

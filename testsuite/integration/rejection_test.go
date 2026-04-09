@@ -54,7 +54,7 @@ func TestIntegration_RejectionPaths(t *testing.T) {
 		{"Model_ABC", corpus.RejectModelABC, "truncated file"},
 		{"Model_BVH", corpus.RejectModelBVH, "missing MOTION section"},
 		{"Model_PLY", corpus.RejectModelPLY, "invalid PLY header"},
-		{"Model_STL", corpus.RejectModelSTL, "failed to read triangle count"},
+		{"Model_STL", corpus.RejectModelSTL, "STL has zero triangles"},
 		{"Model_TDS", corpus.RejectModelTDS, "no decoder registered for format"},
 		{"Model_3MF", corpus.RejectModel3MF, "not a valid zip file"},
 		{"Model_USDA", corpus.RejectModelUSDA, "asset was completely empty"},

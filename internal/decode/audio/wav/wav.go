@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/gophics/ravenporter/detect"
@@ -20,12 +21,18 @@ const (
 	wavName     = "wav"
 	extWAV      = ".wav"
 	riffID      = "RIFF"
+	rf64ID      = "RF64"
+	bw64ID      = "BW64"
 	waveID      = "WAVE"
+	ds64ChunkID = "ds64"
 	fmtChunkID  = "fmt "
 	dataChunkID = "data"
 	listChunkID = "LIST"
 	smplChunkID = "smpl"
+	cueChunkID  = "cue "
 	infoID      = "INFO"
+	adtlID      = "adtl"
+	lablID      = "labl"
 
 	listTitleID   = "INAM"
 	listArtistID  = "IART"
@@ -54,6 +61,16 @@ const (
 	smplNumLoopsOff   = 28
 	smplLoopStartOff  = 8
 	smplLoopEndOff    = 12
+	cueCountOff       = 0
+	cueDataOff        = 4
+	cueRecordLen      = 24
+	cueSampleOff      = 20
+	cueLabelIDOff     = 0
+	cueLabelTextOff   = 4
+
+	ds64DataSizeOff = 8
+	ds64MinSize     = 16
+	listTypeLen     = 4
 
 	maxMetadataSize = 1024 * 1024
 	rawBufSize      = 8192
@@ -93,7 +110,8 @@ func (d *Decoder) Probe(r io.ReadSeeker) bool {
 	if err != nil || n < riffHeaderSize {
 		return false
 	}
-	return string(buf[:4]) == riffID && string(buf[8:12]) == waveID
+	containerID := string(buf[:4])
+	return (containerID == riffID || containerID == rf64ID || containerID == bw64ID) && string(buf[8:12]) == waveID
 }
 
 func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, error) {
@@ -117,16 +135,17 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 	}
 
 	clip := &ir.AudioClip{
-		Name:       "WAV Audio",
-		Format:     ir.AudioWAV,
-		SampleRate: int(hdr.sampleRate),
-		Layout:     decutil.LayoutFromChannels(int(hdr.numChannels)),
-		BitDepth:   decutil.BitDepthFromBits(int(hdr.bitsPerSample)),
-		Duration:   hdr.duration(),
-		LoopStart:  hdr.loopStart,
-		LoopEnd:    hdr.loopEnd,
-		Metadata:   hdr.metadata,
-		Compressed: data, // Store raw file bytes for lazy decode or passthrough
+		Name:        "WAV Audio",
+		Format:      ir.AudioWAV,
+		SampleRate:  int(hdr.sampleRate),
+		Layout:      decutil.LayoutFromChannels(int(hdr.numChannels)),
+		ChannelMask: hdr.channelMask,
+		BitDepth:    decutil.BitDepthFromBits(int(hdr.bitsPerSample)),
+		Duration:    hdr.duration(),
+		LoopStart:   hdr.loopStart,
+		LoopEnd:     hdr.loopEnd,
+		Metadata:    hdr.metadata,
+		Compressed:  data, // Store raw file bytes for lazy decode or passthrough
 	}
 
 	clip.SampleDecode = func(c *ir.AudioClip) ([]float32, error) {
@@ -157,14 +176,17 @@ type wavHeader struct {
 	sampleRate      uint32
 	bitsPerSample   uint16
 	blockAlign      uint16
+	channelMask     uint32
 	samplesPerBlock uint16
 	adpcmCoeffs     [][2]int
 	dataOffset      int64
-	dataSize        uint32
+	dataSize        int64
 	r               detect.ReadSeekerAt
 	metadata        ir.AudioMetadata
 	loopStart       int
 	loopEnd         int
+	cueIndex        map[uint32]int
+	cueLabels       map[uint32]string
 }
 
 func (h *wavHeader) duration() time.Duration {
@@ -177,13 +199,13 @@ func (h *wavHeader) duration() time.Duration {
 		if h.blockAlign == 0 || h.samplesPerBlock == 0 {
 			return 0
 		}
-		blocks := int(h.dataSize) / int(h.blockAlign)
+		blocks := int(h.dataSize / int64(h.blockAlign))
 		return decutil.AudioDuration(blocks*int(h.samplesPerBlock), int(h.sampleRate))
 	default:
 		if h.blockAlign == 0 {
 			return 0
 		}
-		frames := int(h.dataSize) / int(h.blockAlign)
+		frames := int(h.dataSize / int64(h.blockAlign))
 		return decutil.AudioDuration(frames, int(h.sampleRate))
 	}
 }
@@ -193,7 +215,8 @@ func parseWAV(sysCtx context.Context, r detect.ReadSeekerAt) (*wavHeader, error)
 	if _, err := io.ReadFull(r, riffBuf[:]); err != nil {
 		return nil, wavErr(errNotRIFF)
 	}
-	if string(riffBuf[:4]) != riffID {
+	containerID := string(riffBuf[:4])
+	if containerID != riffID && containerID != rf64ID && containerID != bw64ID {
 		return nil, wavErr(errNotRIFF)
 	}
 	if string(riffBuf[8:12]) != waveID {
@@ -203,6 +226,8 @@ func parseWAV(sysCtx context.Context, r detect.ReadSeekerAt) (*wavHeader, error)
 	hdr := wavHeader{
 		loopStart: ir.NoIndex,
 		loopEnd:   ir.NoIndex,
+		cueIndex:  make(map[uint32]int),
+		cueLabels: make(map[uint32]string),
 	}
 	return parseChunks(sysCtx, r, &hdr)
 }
@@ -212,6 +237,7 @@ func parseChunks(
 ) (*wavHeader, error) {
 	var foundFmt, foundData bool
 	var metaBuf [256]byte
+	var ds64DataSize int64
 
 chunkLoop:
 	for {
@@ -223,57 +249,54 @@ chunkLoop:
 			break
 		}
 		chunkID := string(chunkBuf[:4])
-		chunkSize := binread.ReadU32LE(chunkBuf[4:])
-		padSize := padded(chunkSize)
+		chunkSize := int64(binread.ReadU32LE(chunkBuf[4:]))
 
 		switch chunkID {
+		case ds64ChunkID:
+			data, ok := readMetadataChunk(r, chunkSize, padded(chunkSize), metaBuf[:])
+			if !ok {
+				break chunkLoop
+			}
+			ds64DataSize = parseDS64Chunk(data)
 		case fmtChunkID:
 			if err := parseFmtChunk(r, chunkSize, hdr); err != nil {
 				return nil, err
 			}
 			foundFmt = true
 		case dataChunkID:
+			if chunkSize < 0 {
+				return nil, wavErr(errNoData)
+			}
+			actualSize := chunkSize
+			if chunkSize == int64(^uint32(0)) && ds64DataSize > 0 {
+				actualSize = ds64DataSize
+			}
 			offset, seekErr := r.Seek(0, io.SeekCurrent)
 			if seekErr != nil {
 				return nil, wavErr(errNoData)
 			}
 			hdr.dataOffset = offset
-			hdr.dataSize = chunkSize
+			hdr.dataSize = actualSize
 			hdr.r = r
-			if _, err := r.Seek(padSize, io.SeekCurrent); err != nil {
+			if _, err := r.Seek(padded(actualSize), io.SeekCurrent); err != nil {
 				return nil, wavErr(errNoData)
 			}
 			foundData = true
-		case listChunkID:
-			if chunkSize > 0 && chunkSize < maxMetadataSize {
-				var buf []byte
-				if padSize <= int64(len(metaBuf)) {
-					buf = metaBuf[:padSize]
-				} else {
-					buf = make([]byte, padSize)
-				}
-				if _, err := io.ReadFull(r, buf); err == nil {
-					parseLISTChunk(buf[:chunkSize], hdr)
-				}
-			} else if _, seekErr := r.Seek(padSize, io.SeekCurrent); seekErr != nil {
+		case listChunkID, smplChunkID, cueChunkID:
+			data, ok := readMetadataChunk(r, chunkSize, padded(chunkSize), metaBuf[:])
+			if !ok {
 				break chunkLoop
 			}
-		case smplChunkID:
-			if chunkSize > 0 && chunkSize < maxMetadataSize {
-				var buf []byte
-				if padSize <= int64(len(metaBuf)) {
-					buf = metaBuf[:padSize]
-				} else {
-					buf = make([]byte, padSize)
-				}
-				if _, err := io.ReadFull(r, buf); err == nil {
-					parseSmplChunk(buf[:chunkSize], hdr)
-				}
-			} else if _, seekErr := r.Seek(padSize, io.SeekCurrent); seekErr != nil {
-				break chunkLoop
+			switch chunkID {
+			case listChunkID:
+				parseLISTChunk(data, hdr)
+			case smplChunkID:
+				parseSmplChunk(data, hdr)
+			case cueChunkID:
+				parseCueChunk(data, hdr)
 			}
 		default:
-			if _, err := r.Seek(padSize, io.SeekCurrent); err != nil {
+			if _, err := r.Seek(padded(chunkSize), io.SeekCurrent); err != nil {
 				break chunkLoop
 			}
 		}
@@ -288,17 +311,21 @@ chunkLoop:
 	return hdr, nil
 }
 
-func parseFmtChunk(r io.Reader, size uint32, hdr *wavHeader) error {
+func parseFmtChunk(r io.Reader, size int64, hdr *wavHeader) error {
 	if size < fmtMinSize {
 		return wavErr(errNoFmt)
 	}
+	if size > maxMetadataSize {
+		return wavErr(errNoFmt)
+	}
+	bufSize := int(size)
 
 	var stackBuf [256]byte
 	var buf []byte
-	if size <= uint32(len(stackBuf)) {
-		buf = stackBuf[:size]
+	if bufSize <= len(stackBuf) {
+		buf = stackBuf[:bufSize]
 	} else {
-		buf = make([]byte, size)
+		buf = make([]byte, bufSize)
 	}
 
 	if _, err := io.ReadFull(r, buf); err != nil {
@@ -311,6 +338,7 @@ func parseFmtChunk(r io.Reader, size uint32, hdr *wavHeader) error {
 	hdr.bitsPerSample = binread.ReadU16LE(buf[14:16])
 
 	if hdr.audioFormat == fmtExtensible && size >= fmtExtMinSize {
+		hdr.channelMask = binread.ReadU32LE(buf[20:24])
 		subFormat := binread.ReadU16LE(buf[subFormatOffset:])
 		hdr.audioFormat = subFormat
 	}
@@ -375,14 +403,14 @@ func decodeSamples(sysCtx context.Context, hdr *wavHeader) ([]float32, error) {
 	var rawBuf [rawBufSize]byte
 	chunkSize := (len(rawBuf) / bytesPerSample) * bytesPerSample
 
-	bytesRead := 0
+	bytesRead := int64(0)
 	sampleOffset := 0
 
-	for bytesRead < int(hdr.dataSize) {
+	for bytesRead < hdr.dataSize {
 		if err := sysCtx.Err(); err != nil {
 			return nil, wavErr(err)
 		}
-		toRead := min(chunkSize, int(hdr.dataSize)-bytesRead)
+		toRead := min(chunkSize, int(hdr.dataSize-bytesRead))
 
 		n, err := io.ReadFull(hdr.r, rawBuf[:toRead])
 		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
@@ -413,7 +441,7 @@ func decodeSamples(sysCtx context.Context, hdr *wavHeader) ([]float32, error) {
 		}
 
 		sampleOffset += n / bytesPerSample
-		bytesRead += n
+		bytesRead += int64(n)
 	}
 
 	return samples, nil
@@ -435,19 +463,59 @@ func decodePCM(raw []byte, samples []float32, bytesPerSample int) error {
 	return nil
 }
 
-func padded(size uint32) int64 {
-	n := int64(size)
+func parseDS64Chunk(data []byte) int64 {
+	if len(data) < ds64MinSize {
+		return 0
+	}
+	size := binread.ReadU64LE(data[ds64DataSizeOff:])
+	if size > uint64(^uint(0)>>1) {
+		return 0
+	}
+	return int64(size)
+}
+
+func padded(size int64) int64 {
+	n := size
 	if n%2 != 0 {
 		n++
 	}
 	return n
 }
 
+func readMetadataChunk(r io.ReadSeeker, chunkSize, padSize int64, scratch []byte) ([]byte, bool) {
+	if chunkSize <= 0 || chunkSize >= maxMetadataSize {
+		_, err := r.Seek(padSize, io.SeekCurrent)
+		return nil, err == nil
+	}
+
+	var buf []byte
+	if padSize <= int64(len(scratch)) {
+		buf = scratch[:padSize]
+	} else {
+		buf = make([]byte, padSize)
+	}
+
+	if _, err := io.ReadFull(r, buf); err != nil {
+		return nil, true
+	}
+
+	return buf[:int(chunkSize)], true
+}
+
 func parseLISTChunk(data []byte, hdr *wavHeader) {
-	if len(data) < 4 || string(data[:4]) != infoID {
+	if len(data) < listTypeLen {
 		return
 	}
-	data = data[4:]
+
+	switch string(data[:listTypeLen]) {
+	case infoID:
+		parseINFOList(data[listTypeLen:], hdr)
+	case adtlID:
+		parseADTLList(data[listTypeLen:], hdr)
+	}
+}
+
+func parseINFOList(data []byte, hdr *wavHeader) {
 	for len(data) >= 8 {
 		id := string(data[:4])
 		size := int(binread.ReadU32LE(data[4:8]))
@@ -477,6 +545,29 @@ func parseLISTChunk(data []byte, hdr *wavHeader) {
 	}
 }
 
+func parseADTLList(data []byte, hdr *wavHeader) {
+	for len(data) >= 8 {
+		id := string(data[:4])
+		size := int(binread.ReadU32LE(data[4:8]))
+		pad := 0
+		if size%2 != 0 {
+			pad = 1
+		}
+		if len(data) < 8+size+pad {
+			break
+		}
+
+		if id == lablID && size >= cueLabelTextOff {
+			payload := data[8 : 8+size]
+			cueID := binread.ReadU32LE(payload[cueLabelIDOff:])
+			label := string(bytes.TrimRight(payload[cueLabelTextOff:], "\x00"))
+			setCueLabel(hdr, cueID, label)
+		}
+
+		data = data[8+size+pad:]
+	}
+}
+
 func parseSmplChunk(data []byte, hdr *wavHeader) {
 	if len(data) < smplMinSize {
 		return
@@ -493,6 +584,55 @@ func parseSmplChunk(data []byte, hdr *wavHeader) {
 	hdr.loopEnd = int(end)
 }
 
+func parseCueChunk(data []byte, hdr *wavHeader) {
+	if len(data) < cueDataOff {
+		return
+	}
+
+	count := min(int(binread.ReadU32LE(data[cueCountOff:])), (len(data)-cueDataOff)/cueRecordLen)
+	if count == 0 {
+		return
+	}
+	if hdr.cueIndex == nil {
+		hdr.cueIndex = make(map[uint32]int, count)
+	}
+
+	cues := hdr.metadata.CuePoints
+	if cap(cues)-len(cues) < count {
+		next := make([]ir.CuePoint, len(cues), len(cues)+count)
+		copy(next, cues)
+		cues = next
+	}
+
+	for off := cueDataOff; count > 0; count, off = count-1, off+cueRecordLen {
+		cueID := binread.ReadU32LE(data[off:])
+		name := strconv.FormatUint(uint64(cueID), 10)
+		if label, ok := hdr.cueLabels[cueID]; ok {
+			name = label
+		}
+		cues = append(cues, ir.CuePoint{
+			Name:   name,
+			Sample: int(binread.ReadU32LE(data[off+cueSampleOff:])),
+		})
+		hdr.cueIndex[cueID] = len(cues) - 1
+	}
+
+	hdr.metadata.CuePoints = cues
+}
+
+func setCueLabel(hdr *wavHeader, cueID uint32, label string) {
+	if label == "" {
+		return
+	}
+	if hdr.cueLabels == nil {
+		hdr.cueLabels = make(map[uint32]string, 1)
+	}
+	hdr.cueLabels[cueID] = label
+	if idx, ok := hdr.cueIndex[cueID]; ok && idx >= 0 && idx < len(hdr.metadata.CuePoints) {
+		hdr.metadata.CuePoints[idx].Name = label
+	}
+}
+
 func wavErr(cause error) error {
 	return &rperr.DecodeError{Format: ir.FormatID(wavName), Offset: -1, Message: cause.Error()}
 }
@@ -502,7 +642,7 @@ func decodeMP3Samples(hdr *wavHeader) ([]float32, error) {
 		return nil, wavErr(errNoData)
 	}
 
-	raw := make([]byte, hdr.dataSize)
+	raw := make([]byte, int(hdr.dataSize))
 	n, err := io.ReadFull(hdr.r, raw)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return nil, wavErr(err)
@@ -510,7 +650,7 @@ func decodeMP3Samples(hdr *wavHeader) ([]float32, error) {
 	raw = raw[:n]
 
 	mp3Dec := &mp3.Decoder{}
-	opts := detect.DecodeOptions{MaxFileSize: int64(hdr.dataSize)}
+	opts := detect.DecodeOptions{MaxFileSize: hdr.dataSize}
 	scene, err := mp3Dec.Decode(bytes.NewReader(raw), opts)
 	if err != nil {
 		return nil, wavErr(err)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gophics/ravenporter/internal/decutil"
 	"github.com/gophics/ravenporter/ir"
+	"github.com/stretchr/testify/assert"
 )
 
 // buildVorbisComment constructs raw Vorbis comment bytes for testing.
@@ -85,41 +86,34 @@ func TestParseVorbisComment(t *testing.T) {
 				data = buildVorbisComment(tt.vendor, tt.tags)
 			}
 			meta := decutil.ParseVorbisComment(data)
-			if meta.Title != tt.want.Title {
-				t.Errorf("Title = %q, want %q", meta.Title, tt.want.Title)
-			}
-			if meta.Artist != tt.want.Artist {
-				t.Errorf("Artist = %q, want %q", meta.Artist, tt.want.Artist)
-			}
-			if meta.Album != tt.want.Album {
-				t.Errorf("Album = %q, want %q", meta.Album, tt.want.Album)
-			}
-			if meta.Genre != tt.want.Genre {
-				t.Errorf("Genre = %q, want %q", meta.Genre, tt.want.Genre)
-			}
-			if meta.Comment != tt.want.Comment {
-				t.Errorf("Comment = %q, want %q", meta.Comment, tt.want.Comment)
-			}
+			assert.Equal(t, tt.want, meta)
 		})
 	}
 }
 
 // buildID3v2 constructs raw ID3v2 bytes for testing.
 func buildID3v2(frames [][2]string) []byte {
-	// Build frame data first to know total size.
-	var frameData []byte
+	rawFrames := make([][]byte, 0, len(frames))
 	for _, f := range frames {
 		id, text := f[0], f[1]
-		payload := append([]byte{3}, text...) // encoding=3 (UTF-8)
-		header := make([]byte, 10)
-		copy(header[:4], id)
-		binary.BigEndian.PutUint32(header[4:8], uint32(len(payload)))
-		// flags at 8,9 = 0
-		frameData = append(frameData, header...)
-		frameData = append(frameData, payload...)
+		rawFrames = append(rawFrames, buildID3v2Frame(id, append([]byte{3}, text...)))
+	}
+	return buildID3v2Raw(rawFrames...)
+}
+
+func buildID3v2Frame(id string, payload []byte) []byte {
+	header := make([]byte, 10)
+	copy(header[:4], id)
+	binary.BigEndian.PutUint32(header[4:8], uint32(len(payload)))
+	return append(header, payload...)
+}
+
+func buildID3v2Raw(frames ...[]byte) []byte {
+	var frameData []byte
+	for _, frame := range frames {
+		frameData = append(frameData, frame...)
 	}
 
-	// Build ID3v2 header (10 bytes) with syncsafe size.
 	size := len(frameData)
 	header := []byte{
 		'I', 'D', '3',
@@ -176,19 +170,7 @@ func TestParseID3v2Tags(t *testing.T) {
 			}
 
 			meta := decutil.ParseID3v2Tags(data)
-
-			if meta.Title != tt.want.Title {
-				t.Errorf("Title = %q, want %q", meta.Title, tt.want.Title)
-			}
-			if meta.Artist != tt.want.Artist {
-				t.Errorf("Artist = %q, want %q", meta.Artist, tt.want.Artist)
-			}
-			if meta.Album != tt.want.Album {
-				t.Errorf("Album = %q, want %q", meta.Album, tt.want.Album)
-			}
-			if meta.Genre != tt.want.Genre {
-				t.Errorf("Genre = %q, want %q", meta.Genre, tt.want.Genre)
-			}
+			assert.Equal(t, tt.want, meta)
 		})
 	}
 }

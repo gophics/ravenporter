@@ -71,6 +71,9 @@ func cloneImageAssetForWrite(image *ir.ImageAsset, cfg writeConfig) (*ir.ImageAs
 		Format:            image.Format,
 		Width:             image.Width,
 		Height:            image.Height,
+		Topology:          image.Topology,
+		Depth:             image.Depth,
+		Layers:            image.Layers,
 		Channels:          image.Channels,
 		ColorSpace:        image.ColorSpace,
 		MipLevels:         image.MipLevels,
@@ -81,6 +84,7 @@ func cloneImageAssetForWrite(image *ir.ImageAsset, cfg writeConfig) (*ir.ImageAs
 		Metadata:          cloneStringMap(image.Metadata),
 		PixelDecode:       image.PixelDecode,
 	}
+	cloned.NormalizeTopology()
 
 	if cloned.SourcePath != "" && isDataURI(cloned.SourcePath) {
 		data, err := decodeDataURI(cloned.SourcePath)

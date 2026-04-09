@@ -20,7 +20,7 @@ func (s *triangulateStep) Apply(asset *ir.Asset, _ core.Options) (*ir.Asset, err
 		for j := range mesh.Primitives {
 			p := &mesh.Primitives[j]
 
-			if p.Mode == ir.Triangles || p.Mode == ir.Lines || p.Mode == ir.Points {
+			if p.Mode == ir.Triangles || p.Mode == ir.Lines || p.Mode == ir.LineLoop || p.Mode == ir.Points {
 				continue
 			}
 

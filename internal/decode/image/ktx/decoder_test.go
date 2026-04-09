@@ -30,6 +30,18 @@ func putU32LE(b []byte, v uint32) {
 	b[3] = byte(v >> 24)
 }
 
+func buildKTX1Header(width, height, depth, layers, faces, mipLevels uint32) []byte {
+	data := make([]byte, 68)
+	copy(data[0:], "\xAB\x4B\x54\x58\x20\x31\x31\xBB\x0D\x0A\x1A\x0A")
+	putU32LE(data[36:], width)
+	putU32LE(data[40:], height)
+	putU32LE(data[44:], depth)
+	putU32LE(data[48:], layers)
+	putU32LE(data[52:], faces)
+	putU32LE(data[56:], mipLevels)
+	return data
+}
+
 func TestKTXProbe(t *testing.T) {
 	dec := &ktx.Decoder{}
 	assert.True(t, dec.Probe(bytes.NewReader(ktxData)))
@@ -53,7 +65,7 @@ func TestKTX2SyntheticHeader(t *testing.T) {
 	putU32LE(data[12:], 157)
 	putU32LE(data[20:], 512)
 	putU32LE(data[24:], 256)
-	putU32LE(data[44:], 5)
+	putU32LE(data[40:], 5)
 
 	dec := &ktx.Decoder{}
 	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
@@ -74,8 +86,8 @@ func TestKTX2ZstdSupercompression(t *testing.T) {
 	putU32LE(data[12:], 157) // ASTC
 	putU32LE(data[20:], 256)
 	putU32LE(data[24:], 128)
-	putU32LE(data[40:], 2) // Zstd supercompression
-	putU32LE(data[44:], 1) // 1 mip level
+	putU32LE(data[40:], 1) // 1 mip level
+	putU32LE(data[44:], 2) // Zstd supercompression
 
 	dec := &ktx.Decoder{}
 	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
@@ -97,10 +109,7 @@ func BenchmarkDecode(b *testing.B) {
 }
 
 func TestKTX1SyntheticHeader(t *testing.T) {
-	data := make([]byte, 68)
-	copy(data[0:], "\xAB\x4B\x54\x58\x20\x31\x31\xBB\x0D\x0A\x1A\x0A")
-	putU32LE(data[36:], 64)
-	putU32LE(data[40:], 32)
+	data := buildKTX1Header(64, 32, 0, 0, 1, 3)
 
 	dec := &ktx.Decoder{}
 	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
@@ -108,6 +117,79 @@ func TestKTX1SyntheticHeader(t *testing.T) {
 	img := scene.Images[0]
 	assert.Equal(t, 64, img.Width)
 	assert.Equal(t, 32, img.Height)
+	assert.Equal(t, 3, img.MipLevels)
+}
+
+func TestKTX1ZeroMipCount(t *testing.T) {
+	dec := &ktx.Decoder{}
+	scene, err := dec.Decode(bytes.NewReader(buildKTX1Header(32, 16, 0, 0, 1, 0)), detect.DecodeOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, 1, scene.Images[0].MipLevels)
+}
+
+func TestKTX1Topology(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     []byte
+		topology ir.ImageTopology
+		depth    int
+		layers   int
+	}{
+		{"2D", buildKTX1Header(32, 16, 0, 0, 1, 1), ir.ImageTopology2D, 1, 1},
+		{"3D", buildKTX1Header(32, 16, 4, 0, 1, 1), ir.ImageTopology3D, 4, 1},
+		{"2DArray", buildKTX1Header(32, 16, 0, 3, 1, 1), ir.ImageTopology2DArray, 1, 3},
+		{"Cube", buildKTX1Header(32, 16, 0, 0, 6, 1), ir.ImageTopologyCube, 1, 1},
+		{"CubeArray", buildKTX1Header(32, 16, 0, 2, 6, 1), ir.ImageTopologyCubeArray, 1, 2},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			scene, err := (&ktx.Decoder{}).Decode(bytes.NewReader(tc.data), detect.DecodeOptions{})
+			require.NoError(t, err)
+			img := scene.Images[0]
+			assert.Equal(t, tc.topology, img.Topology)
+			assert.Equal(t, tc.depth, img.Depth)
+			assert.Equal(t, tc.layers, img.Layers)
+		})
+	}
+}
+
+func TestKTX2Topology(t *testing.T) {
+	build := func(depth, layers, faces uint32) []byte {
+		data := make([]byte, 80)
+		copy(data[0:], "\xAB\x4B\x54\x58\x20\x32\x30\xBB\x0D\x0A\x1A\x0A")
+		putU32LE(data[20:], 64)
+		putU32LE(data[24:], 32)
+		putU32LE(data[28:], depth)
+		putU32LE(data[32:], layers)
+		putU32LE(data[36:], faces)
+		return data
+	}
+
+	tests := []struct {
+		name     string
+		data     []byte
+		topology ir.ImageTopology
+		depth    int
+		layers   int
+	}{
+		{"2D", build(0, 0, 1), ir.ImageTopology2D, 1, 1},
+		{"3D", build(6, 0, 1), ir.ImageTopology3D, 6, 1},
+		{"2DArray", build(0, 4, 1), ir.ImageTopology2DArray, 1, 4},
+		{"Cube", build(0, 0, 6), ir.ImageTopologyCube, 1, 1},
+		{"CubeArray", build(0, 3, 6), ir.ImageTopologyCubeArray, 1, 3},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			scene, err := (&ktx.Decoder{}).Decode(bytes.NewReader(tc.data), detect.DecodeOptions{})
+			require.NoError(t, err)
+			img := scene.Images[0]
+			assert.Equal(t, tc.topology, img.Topology)
+			assert.Equal(t, tc.depth, img.Depth)
+			assert.Equal(t, tc.layers, img.Layers)
+		})
+	}
 }
 
 func TestKTXTruncatedHeader(t *testing.T) {

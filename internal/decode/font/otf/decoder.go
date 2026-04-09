@@ -12,11 +12,12 @@ import (
 const (
 	formatName = "OTF"
 	extOTF     = ".otf"
+	extOTC     = ".otc"
 )
 
 var magic = []byte("OTTO")
 
-var extensions = []string{extOTF}
+var extensions = []string{extOTF, extOTC}
 
 // Decoder implements detect.Decoder for OpenType fonts.
 type Decoder struct{}
@@ -36,15 +37,13 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 		return nil, decutil.DecodeErr(ir.FormatOTF, "read", err)
 	}
 
-	f := &ir.Font{
-		Name:   formatName,
-		Format: ir.FontOTF,
-		Vector: &ir.VectorFontData{RawData: raw},
+	fonts, err := fntutil.BuildFonts(raw, ir.FontOTF, formatName)
+	if err != nil {
+		return nil, decutil.DecodeErr(ir.FormatOTF, "invalid font collection", err)
 	}
-	fntutil.ParseSFNTMetrics(raw, f)
 
 	return &ir.Asset{
-		Fonts:    []*ir.Font{f},
+		Fonts:    fonts,
 		Metadata: ir.AssetMetadata{SourceFormat: ir.FormatOTF},
 	}, nil
 }

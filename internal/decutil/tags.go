@@ -63,11 +63,10 @@ func ParseVorbisComment(data []byte) ir.AudioMetadata {
 
 // ID3v2 text frame IDs (v2.3/v2.4).
 const (
-	id3Title   = "TIT2"
-	id3Artist  = "TPE1"
-	id3Album   = "TALB"
-	id3Genre   = "TCON"
-	id3Comment = "COMM"
+	id3Title  = uint32('T')<<24 | uint32('I')<<16 | uint32('T')<<8 | uint32('2')
+	id3Artist = uint32('T')<<24 | uint32('P')<<16 | uint32('E')<<8 | uint32('1')
+	id3Album  = uint32('T')<<24 | uint32('A')<<16 | uint32('L')<<8 | uint32('B')
+	id3Genre  = uint32('T')<<24 | uint32('C')<<16 | uint32('O')<<8 | uint32('N')
 )
 
 // ParseID3v2Tags extracts basic tags from an ID3v2 header.
@@ -83,31 +82,34 @@ func ParseID3v2Tags(data []byte) ir.AudioMetadata {
 	pos := 10
 
 	for pos+10 <= tagEnd {
-		frameID := string(data[pos : pos+4])
+		frameID := binary.BigEndian.Uint32(data[pos : pos+4])
 		frameSize := int(binary.BigEndian.Uint32(data[pos+4 : pos+8]))
 		pos += 10
 
 		if frameSize <= 0 || pos+frameSize > tagEnd {
 			break
 		}
-		// Text frames: first byte is encoding (0=ISO-8859-1, 3=UTF-8), rest is text.
-		text := ""
-		if frameSize > 1 {
-			text = strings.TrimRight(string(data[pos+1:pos+frameSize]), "\x00")
-		}
+		frame := data[pos : pos+frameSize]
 
 		switch frameID {
 		case id3Title:
-			meta.Title = text
+			meta.Title = parseID3TextFrame(frame)
 		case id3Artist:
-			meta.Artist = text
+			meta.Artist = parseID3TextFrame(frame)
 		case id3Album:
-			meta.Album = text
+			meta.Album = parseID3TextFrame(frame)
 		case id3Genre:
-			meta.Genre = text
+			meta.Genre = parseID3TextFrame(frame)
 		}
 
 		pos += frameSize
 	}
 	return meta
+}
+
+func parseID3TextFrame(frame []byte) string {
+	if len(frame) <= 1 {
+		return ""
+	}
+	return strings.TrimRight(string(frame[1:]), "\x00")
 }

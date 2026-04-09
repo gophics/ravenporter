@@ -50,6 +50,16 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, ir.FormatOTF, scene.Metadata.SourceFormat)
 }
 
+func TestDecodeCollection(t *testing.T) {
+	collection := testutil.BuildFontCollection(minimalOTF, minimalOTF)
+	scene, err := (&otf.Decoder{}).Decode(bytes.NewReader(collection), detect.DecodeOptions{})
+	require.NoError(t, err)
+	require.Len(t, scene.Fonts, 2)
+	assert.Equal(t, "OTF #0", scene.Fonts[0].Name)
+	assert.Equal(t, "OTF #1", scene.Fonts[1].Name)
+	assert.Equal(t, ir.FontOTF, scene.Fonts[0].Format)
+}
+
 func TestDecodeRejectsOversizedInputBeforeRead(t *testing.T) {
 	src := testutil.NewOversizeReadSeeker(8)
 	_, err := (&otf.Decoder{}).Decode(src, detect.DecodeOptions{MaxFileSize: 4})
