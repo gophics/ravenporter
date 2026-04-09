@@ -30,13 +30,6 @@ export default defineConfig({
       title: "RavenPorter Docs",
       description:
         "Documentation for RavenPorter, the pure-Go asset ingest and runtime-cooking library for games, tools, and asset pipelines.",
-      favicon: "/favicon.svg",
-      logo: {
-        light: "./src/assets/logo-light.svg",
-        dark: "./src/assets/logo-dark.svg",
-        alt: "RavenPorter",
-        replacesTitle: true,
-      },
       editLink: {
         baseUrl: "https://github.com/gophics/ravenporter/edit/master/docs/",
       },
