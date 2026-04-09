@@ -1,0 +1,15 @@
+---
+title: Decoder Reference
+description: Runtime-oriented specification coverage notes for RavenPorter's built-in decoders.
+---
+
+RavenPorter's decoder reference is organized around the parts of each source specification that matter to a runtime importer and cooker.
+
+## How To Read These Pages
+
+Each decoder page separates gaps into two buckets:
+
+- `Unimplemented Runtime-Relevant Features` covers source-format features that would improve import fidelity, practical compatibility, or runtime asset correctness if RavenPorter added them.
+- `Out Of Scope For RavenPorter` covers features RavenPorter deliberately does not chase because they are mostly archival metadata, editor fidelity, or source-authoring detail with weak runtime payoff.
+
+That split is intentional. RavenPorter is not trying to be a source-faithful archival parser for every format family. It is trying to import the parts of those formats that matter when the end result is cooked runtime data.

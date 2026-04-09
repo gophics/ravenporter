@@ -26,7 +26,9 @@ flowchart TD
 | `SCEN` | Binary scene encoding for the typed IR structure |
 | `BLOB` | Raw media payload store referenced from `SCEN` |
 
-The current cache format version in this repository is `2`.
+The current cache format version in this repository is `1`.
+
+Existing cooked caches from older commits should be treated as disposable and fully rebuilt after serializer layout changes. This branch keeps the container version at `1`, so older caches are not supported through compatibility shims.
 
 ## Read Model
 
@@ -47,7 +49,7 @@ The current cache format version in this repository is `2`.
 
 ## Intentional Limits
 
-- node `Extras` are dropped in cache v1/v2
+- node `Extras` are dropped in cache v1
 - external texture file references are rejected by `cache.Write()`
 - whole-file compression is not used
 

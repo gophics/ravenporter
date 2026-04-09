@@ -33,6 +33,7 @@ RavenPorter Cache is the cooked runtime asset format used by the `cache` package
 ## Notes
 
 - The cache format is RavenPorter-owned, not an external interchange standard.
+- Existing cooked caches from older commits should be treated as disposable and fully rebuilt after serializer layout changes; this branch now uses container version `1`.
 - Call `(*cache.Asset).Close()` when you open a reader-backed cache through `Open` or lazy `Read`.
 - Use `WithEagerMedia()` when you want the old all-bytes-materialized behavior during `Read`/`Open`.
 - Decoded image pixels are not serialized by default when compressed bytes are enough to reconstruct them.

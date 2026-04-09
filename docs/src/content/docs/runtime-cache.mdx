@@ -37,6 +37,10 @@ import { Aside, CardGrid, LinkCard } from "@astrojs/starlight/components";
   ]}
 />
 
+<Aside type="note" title="Recook old caches after serializer changes">
+  The current cache container version in this repository is `1`. Older cooked caches from earlier commits should be treated as disposable and fully rebuilt when the scene serializer layout changes, because this branch does not keep compatibility shims for older cache payloads.
+</Aside>
+
 <Aside type="caution" title="Cook only self-contained runtime assets">
   cache.Write() rejects external texture references. If you need a single-file runtime package, import with WithEmbedTextures() before cooking.
 </Aside>
