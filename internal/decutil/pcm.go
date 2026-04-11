@@ -9,6 +9,7 @@ const (
 	Bytes16     = 2
 	Bytes24     = 3
 	Bytes32     = 4
+	Bytes64     = 8
 
 	MaxInt8    = 128.0
 	MaxInt16   = 32768.0
@@ -57,10 +58,28 @@ func Decode32LE(raw []byte, dst []float32) {
 	}
 }
 
-// DecodeIEEEFloat converts IEEE 754 float32 samples.
+// DecodeIEEEFloat converts little-endian IEEE 754 float samples.
 func DecodeIEEEFloat(raw []byte, dst []float32, bytesPerSample int) {
 	for i := range len(dst) {
 		off := i * bytesPerSample
-		dst[i] = binread.ReadF32LE(raw[off:])
+		switch bytesPerSample {
+		case Bytes32:
+			dst[i] = binread.ReadF32LE(raw[off:])
+		case Bytes64:
+			dst[i] = float32(binread.ReadF64LE(raw[off:]))
+		}
+	}
+}
+
+// DecodeIEEEFloatBE converts big-endian IEEE 754 float samples.
+func DecodeIEEEFloatBE(raw []byte, dst []float32, bytesPerSample int) {
+	for i := range len(dst) {
+		off := i * bytesPerSample
+		switch bytesPerSample {
+		case Bytes32:
+			dst[i] = binread.ReadF32BE(raw[off:])
+		case Bytes64:
+			dst[i] = float32(binread.ReadF64BE(raw[off:]))
+		}
 	}
 }

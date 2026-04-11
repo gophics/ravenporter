@@ -244,6 +244,7 @@ const (
 	BitDepth16 BitDepth = 16
 	BitDepth24 BitDepth = 24
 	BitDepth32 BitDepth = 32
+	BitDepth64 BitDepth = 64
 )
 
 // NoIndex is the sentinel for unattached optional indices.

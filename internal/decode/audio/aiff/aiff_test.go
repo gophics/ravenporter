@@ -89,20 +89,53 @@ func TestAIFCCodecs(t *testing.T) {
 		bps     int
 		pcm     []byte
 		minLen  int
+		depth   ir.BitDepth
 		checkFn func(t *testing.T, samples []float32)
 	}{
 		{
 			name: "NONE", comp: "NONE", bps: 16,
 			pcm:    []byte{0x7F, 0xFF, 0x80, 0x01},
 			minLen: 2,
+			depth:  ir.BitDepth16,
 			checkFn: func(t *testing.T, s []float32) {
 				assert.InDelta(t, 1.0, s[0], 0.001)
+			},
+		},
+		{
+			name: "twos", comp: "twos", bps: 16,
+			pcm:    []byte{0x7F, 0xFF, 0x80, 0x01},
+			minLen: 2,
+			depth:  ir.BitDepth16,
+			checkFn: func(t *testing.T, s []float32) {
+				assert.InDelta(t, 1.0, s[0], 0.001)
+				assert.InDelta(t, -1.0, s[1], 0.001)
+			},
+		},
+		{
+			name: "TWOS", comp: "TWOS", bps: 16,
+			pcm:    []byte{0x7F, 0xFF, 0x80, 0x01},
+			minLen: 2,
+			depth:  ir.BitDepth16,
+			checkFn: func(t *testing.T, s []float32) {
+				assert.InDelta(t, 1.0, s[0], 0.001)
+				assert.InDelta(t, -1.0, s[1], 0.001)
+			},
+		},
+		{
+			name: "Raw8Bit", comp: "raw ", bps: 8,
+			pcm:    []byte{128, 255},
+			minLen: 2,
+			depth:  ir.BitDepth8,
+			checkFn: func(t *testing.T, s []float32) {
+				assert.InDelta(t, 0.0, s[0], 0.001)
+				assert.InDelta(t, 127.0/128.0, s[1], 0.001)
 			},
 		},
 		{
 			name: "Sowt_LE", comp: "sowt", bps: 16,
 			pcm:    []byte{0xFF, 0x7F, 0x01, 0x80},
 			minLen: 2,
+			depth:  ir.BitDepth16,
 			checkFn: func(t *testing.T, s []float32) {
 				assert.InDelta(t, 1.0, s[0], 0.001)
 				assert.InDelta(t, -1.0, s[1], 0.001)
@@ -110,26 +143,54 @@ func TestAIFCCodecs(t *testing.T) {
 		},
 		{
 			name: "Float32", comp: "fl32", bps: 32,
-			pcm:    leF32(0.5),
+			pcm:    beF32(0.5),
 			minLen: 1,
+			depth:  ir.BitDepth32,
 			checkFn: func(t *testing.T, s []float32) {
 				assert.InDelta(t, 0.5, s[0], 0.001)
 			},
 		},
 		{
+			name: "Float64", comp: "fl64", bps: 64,
+			pcm:    beF64(0.5),
+			minLen: 1,
+			depth:  ir.BitDepth64,
+			checkFn: func(t *testing.T, s []float32) {
+				assert.InDelta(t, 0.5, s[0], 0.001)
+			},
+		},
+		{
+			name: "Int24", comp: "in24", bps: 24,
+			pcm:    []byte{0x7F, 0xFF, 0xFF},
+			minLen: 1,
+			depth:  ir.BitDepth24,
+			checkFn: func(t *testing.T, s []float32) {
+				assert.InDelta(t, 8388607.0/8388608.0, s[0], 0.001)
+			},
+		},
+		{
+			name: "Int32", comp: "in32", bps: 32,
+			pcm:    beU32(0x7FFFFFFF),
+			minLen: 1,
+			depth:  ir.BitDepth32,
+			checkFn: func(t *testing.T, s []float32) {
+				assert.InDelta(t, 2147483647.0/2147483648.0, s[0], 0.001)
+			},
+		},
+		{
 			name: "Alaw", comp: "alaw", bps: 8,
-			pcm: []byte{0xD5, 0x55}, minLen: 2,
+			pcm: []byte{0xD5, 0x55}, minLen: 2, depth: ir.BitDepth8,
 			checkFn: func(t *testing.T, s []float32) {
 				assert.NotEqual(t, float32(0), s[0])
 			},
 		},
 		{
 			name: "Ulaw", comp: "ulaw", bps: 8,
-			pcm: []byte{0xFF, 0x00}, minLen: 2,
+			pcm: []byte{0xFF, 0x00}, minLen: 2, depth: ir.BitDepth8,
 		},
 		{
 			name: "IMA4", comp: "ima4", bps: 16,
-			pcm: make([]byte, 34), minLen: 1,
+			pcm: make([]byte, 34), minLen: 1, depth: ir.BitDepth16,
 		},
 	}
 	for _, tt := range tests {
@@ -140,12 +201,20 @@ func TestAIFCCodecs(t *testing.T) {
 			}
 			data := buildAIFC(tt.comp, 1, frames, tt.bps, 44100, tt.pcm)
 			scene := decodeOK(t, data)
-			require.GreaterOrEqual(t, len(getSamples(t, scene.AudioClips[0])), tt.minLen)
+			samples := getSamples(t, scene.AudioClips[0])
+			assert.Equal(t, tt.depth, scene.AudioClips[0].BitDepth)
+			require.GreaterOrEqual(t, len(samples), tt.minLen)
 			if tt.checkFn != nil {
-				tt.checkFn(t, getSamples(t, scene.AudioClips[0]))
+				tt.checkFn(t, samples)
 			}
 		})
 	}
+}
+
+func TestAIFCRejectsUnsupportedCodec(t *testing.T) {
+	_, err := (&Decoder{}).Decode(bytes.NewReader(buildAIFC("MAC3", 1, 1, 16, 44100, make([]byte, 2))), detect.DecodeOptions{})
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "unsupported AIFC compression")
 }
 
 func TestLoopPoints(t *testing.T) {
@@ -263,8 +332,6 @@ func TestUnknownChunkSkipped(t *testing.T) {
 	assert.Equal(t, 2, len(getSamples(t, scene.AudioClips[0])))
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────
-
 func getSamples(t testing.TB, c *ir.AudioClip) []float32 {
 	t.Helper()
 	s, err := c.DecodeSamples()
@@ -288,13 +355,17 @@ func beU32(v uint32) []byte {
 	return b
 }
 
-func leF32(v float32) []byte {
+func beF32(v float32) []byte {
 	b := make([]byte, 4)
-	binary.LittleEndian.PutUint32(b, math.Float32bits(v))
+	binary.BigEndian.PutUint32(b, math.Float32bits(v))
 	return b
 }
 
-// ─── Binary builders ────────────────────────────────────────────────
+func beF64(v float64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, math.Float64bits(v))
+	return b
+}
 
 type chunk struct {
 	id   string
@@ -397,8 +468,8 @@ func markChunk(markers []marker) chunk {
 	for _, m := range markers {
 		_ = binary.Write(&buf, binary.BigEndian, m.id)
 		_ = binary.Write(&buf, binary.BigEndian, m.pos)
-		buf.WriteByte(1)   // Pascal string length
-		buf.WriteByte('M') // 1 char (odd length = no pad)
+		buf.WriteByte(1)
+		buf.WriteByte('M')
 	}
 	return chunk{id: "MARK", data: buf.Bytes()}
 }

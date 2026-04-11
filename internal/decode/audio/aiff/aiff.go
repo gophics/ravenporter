@@ -19,16 +19,16 @@ const (
 	extAIFF    = ".aiff"
 	extAIF     = ".aif"
 
-	formID      = "FORM"
-	aiffID      = "AIFF"
-	aifcID      = "AIFC"
-	commChunkID = "COMM"
-	ssndChunkID = "SSND"
-	markChunkID = "MARK"
-	instChunkID = "INST"
-	nameChunkID = "NAME"
-	authChunkID = "AUTH"
-	annoChunkID = "ANNO"
+	formTag      = 0x464F524D
+	aiffTag      = 0x41494646
+	aifcTag      = 0x41494643
+	commChunkTag = 0x434F4D4D
+	ssndChunkTag = 0x53534E44
+	markChunkTag = 0x4D41524B
+	instChunkTag = 0x494E5354
+	nameChunkTag = 0x4E414D45
+	authChunkTag = 0x41555448
+	annoChunkTag = 0x414E4E4F
 
 	commDataSize    = 18
 	commAIFCMinSize = 22
@@ -48,15 +48,26 @@ const (
 	extBias         = 16383
 	mantTop         = 63
 
-	compNone = "NONE"
-	compSowt = "sowt"
-	compFl32 = "fl32"
-	compFL32 = "FL32"
-	compAlaw = "alaw"
-	compALAW = "ALAW"
-	compUlaw = "ulaw"
-	compULAW = "ULAW"
-	compIma4 = "ima4"
+	compNoneTag = 0x4E4F4E45
+	compRawTag  = 0x72617720
+	compSowtTag = 0x736F7774
+	compTwosTag = 0x74776F73
+	compTWOSTag = 0x54574F53
+	compFl32Tag = 0x666C3332
+	compFL32Tag = 0x464C3332
+	compFl64Tag = 0x666C3634
+	compFL64Tag = 0x464C3634
+	compIn24Tag = 0x696E3234
+	compIn32Tag = 0x696E3332
+	compAlawTag = 0x616C6177
+	compALAWTag = 0x414C4157
+	compUlawTag = 0x756C6177
+	compULAWTag = 0x554C4157
+	compIma4Tag = 0x696D6134
+
+	aiffBits24 = 24
+	aiffBits32 = 32
+	aiffBits64 = 64
 )
 
 var (
@@ -65,6 +76,7 @@ var (
 	errNoCOMM  = errors.New("missing COMM chunk")
 	errBadCOMM = errors.New("invalid COMM chunk")
 	errNoSSND  = errors.New("missing SSND chunk")
+	errBadComp = errors.New("unsupported AIFC compression")
 )
 
 func Registrations() []detect.Registration {
@@ -83,8 +95,8 @@ func (d *Decoder) Probe(r io.ReadSeeker) bool {
 	var buf [probeLen]byte
 	n, err := r.Read(buf[:])
 	return err == nil && n >= probeLen &&
-		string(buf[:4]) == formID &&
-		(string(buf[8:12]) == aiffID || string(buf[8:12]) == aifcID)
+		binary.BigEndian.Uint32(buf[:4]) == formTag &&
+		(binary.BigEndian.Uint32(buf[8:12]) == aiffTag || binary.BigEndian.Uint32(buf[8:12]) == aifcTag)
 }
 
 func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, error) {
@@ -114,12 +126,11 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 		LoopStart:  info.loopStart,
 		LoopEnd:    info.loopEnd,
 		Metadata:   info.metadata,
-		Compressed: data, // Store raw bytes for lazy decode
+		Compressed: data,
 	}
 
 	clip.SampleDecode = func(c *ir.AudioClip) ([]float32, error) {
-		info.r = bytes.NewReader(c.Compressed)
-		samples, decErr := decodeSamples(sysCtx, info)
+		samples, decErr := decodeSamples(sysCtx, c.Compressed, info)
 		if decErr != nil {
 			return nil, decutil.DecodeErr(ir.FormatAIFF, decErr.Error(), decErr)
 		}
@@ -144,14 +155,13 @@ type aiffInfo struct {
 	sampleRate    int
 	dataOffset    int64
 	dataSize      uint32
-	r             io.ReadSeeker
 	markers       [maxMarkers]markerEntry
 	markerCount   int
 	loopStart     int
 	loopEnd       int
 	isAIFC        bool
-	compression   string
 	isFloat       bool
+	isRaw         bool
 	isByteSwapped bool
 	isAlaw        bool
 	isUlaw        bool
@@ -169,19 +179,18 @@ func parse(sysCtx context.Context, r io.ReadSeeker) (*aiffInfo, error) { //nolin
 	if _, err := io.ReadFull(r, header[:]); err != nil {
 		return nil, errNotFORM
 	}
-	if string(header[:4]) != formID {
+	if binary.BigEndian.Uint32(header[:4]) != formTag {
 		return nil, errNotFORM
 	}
-	formType := string(header[8:12])
-	if formType != aiffID && formType != aifcID {
+	formType := binary.BigEndian.Uint32(header[8:12])
+	if formType != aiffTag && formType != aifcTag {
 		return nil, errNotAIFF
 	}
 
 	info := aiffInfo{
 		loopStart: ir.NoIndex,
 		loopEnd:   ir.NoIndex,
-		isAIFC:    formType == aifcID,
-		r:         r,
+		isAIFC:    formType == aifcTag,
 	}
 	foundCOMM, foundSSND := false, false
 
@@ -193,31 +202,31 @@ func parse(sysCtx context.Context, r io.ReadSeeker) (*aiffInfo, error) { //nolin
 		if _, err := io.ReadFull(r, chunkHdr[:]); err != nil {
 			break
 		}
-		chunkID := string(chunkHdr[:4])
+		chunkID := binary.BigEndian.Uint32(chunkHdr[:4])
 		chunkSize := binary.BigEndian.Uint32(chunkHdr[4:])
 
 		switch chunkID {
-		case commChunkID:
+		case commChunkTag:
 			if err := parseCOMM(r, chunkSize, &info); err != nil {
 				return nil, err
 			}
 			foundCOMM = true
 
-		case ssndChunkID:
+		case ssndChunkTag:
 			if err := parseSSND(r, chunkSize, &info); err != nil {
 				return nil, err
 			}
 			foundSSND = true
 
-		case markChunkID:
+		case markChunkTag:
 			parseMarkers(r, chunkSize, &info)
-		case instChunkID:
+		case instChunkTag:
 			parseInstrument(r, chunkSize, &info)
-		case nameChunkID:
+		case nameChunkTag:
 			info.metadata.Title = readTextChunk(r, chunkSize)
-		case authChunkID:
+		case authChunkTag:
 			info.metadata.Artist = readTextChunk(r, chunkSize)
-		case annoChunkID:
+		case annoChunkTag:
 			info.metadata.Comment = readTextChunk(r, chunkSize)
 
 		default:
@@ -278,26 +287,52 @@ func parseCOMM(r io.ReadSeeker, chunkSize uint32, info *aiffInfo) error {
 	if _, err := io.ReadFull(r, compType[:]); err != nil {
 		return errBadCOMM
 	}
-	info.compression = string(compType[:])
-	switch info.compression {
-	case compNone:
-	case compSowt:
+	switch binary.BigEndian.Uint32(compType[:]) {
+	case compNoneTag:
+	case compRawTag:
+		if info.bitsPerSample != decutil.BitsPerByte {
+			return errBadComp
+		}
+		info.isRaw = true
+	case compTwosTag, compTWOSTag:
+	case compSowtTag:
 		info.isByteSwapped = true
-	case compFl32, compFL32:
+	case compFl32Tag, compFL32Tag:
+		if info.bitsPerSample != aiffBits32 {
+			return errBadComp
+		}
 		info.isFloat = true
-	case compAlaw, compALAW:
+	case compFl64Tag, compFL64Tag:
+		if info.bitsPerSample != aiffBits64 {
+			return errBadComp
+		}
+		info.isFloat = true
+	case compIn24Tag:
+		if info.bitsPerSample != aiffBits24 {
+			return errBadComp
+		}
+	case compIn32Tag:
+		if info.bitsPerSample != aiffBits32 {
+			return errBadComp
+		}
+	case compAlawTag, compALAWTag:
 		info.isAlaw = true
-	case compUlaw, compULAW:
+	case compUlawTag, compULAWTag:
 		info.isUlaw = true
-	case compIma4:
+	case compIma4Tag:
 		info.isIMA4 = true
+	default:
+		return errBadComp
 	}
 	skipRemaining(r, chunkSize, commAIFCMinSize)
 	return nil
 }
 
-func decodeSamples(sysCtx context.Context, info *aiffInfo) ([]float32, error) {
-	if _, err := info.r.Seek(info.dataOffset, io.SeekStart); err != nil {
+func decodeSamples(sysCtx context.Context, data []byte, info *aiffInfo) ([]float32, error) {
+	var r bytes.Reader
+	r.Reset(data)
+
+	if _, err := r.Seek(info.dataOffset, io.SeekStart); err != nil {
 		return nil, err
 	}
 
@@ -310,7 +345,7 @@ func decodeSamples(sysCtx context.Context, info *aiffInfo) ([]float32, error) {
 	}
 
 	if info.isIMA4 {
-		return decodeIMA4(sysCtx, info.r, info.dataSize, info.numChannels), nil
+		return decodeIMA4(sysCtx, &r, info.dataSize, info.numChannels), nil
 	}
 
 	if bytesPerSample <= 0 {
@@ -333,7 +368,7 @@ func decodeSamples(sysCtx context.Context, info *aiffInfo) ([]float32, error) {
 			return nil, err
 		}
 		toRead := min(chunkSize, int(info.dataSize)-bytesRead)
-		n, err := io.ReadFull(info.r, rawBuf[:toRead])
+		n, err := io.ReadFull(&r, rawBuf[:toRead])
 		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && err != io.EOF {
 			return nil, err
 		}
@@ -346,12 +381,14 @@ func decodeSamples(sysCtx context.Context, info *aiffInfo) ([]float32, error) {
 		src := rawBuf[:n]
 
 		switch {
+		case info.isRaw:
+			decutil.Decode8Bit(src, dst)
 		case info.isAlaw:
 			decutil.DecodeAlaw(src, dst)
 		case info.isUlaw:
 			decutil.DecodeUlaw(src, dst)
 		case info.isFloat:
-			decutil.DecodeIEEEFloat(src, dst, bytesPerSample)
+			decutil.DecodeIEEEFloatBE(src, dst, bytesPerSample)
 		case info.isByteSwapped:
 			decodeSowtSamples(src, dst, bytesPerSample)
 		default:

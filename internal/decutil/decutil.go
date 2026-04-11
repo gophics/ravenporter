@@ -264,6 +264,8 @@ func BitDepthFromBits(bits int) ir.BitDepth {
 		return ir.BitDepth24
 	case 32: //nolint:mnd // bit-depth value
 		return ir.BitDepth32
+	case 64: //nolint:mnd // bit-depth value
+		return ir.BitDepth64
 	default:
 		return ir.BitDepth16
 	}

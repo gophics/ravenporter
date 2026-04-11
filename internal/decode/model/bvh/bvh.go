@@ -19,6 +19,9 @@ const (
 	channelXrot = "Xrotation"
 	channelYrot = "Yrotation"
 	channelZrot = "Zrotation"
+	channelXsca = "Xscale"
+	channelYsca = "Yscale"
+	channelZsca = "Zscale"
 
 	defaultFrameTime = 0.033333
 	frameTimeFields  = 3

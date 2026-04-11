@@ -20,6 +20,9 @@ var (
 	chanXrotB = []byte(channelXrot)
 	chanYrotB = []byte(channelYrot)
 	chanZrotB = []byte(channelZrot)
+	chanXscaB = []byte(channelXsca)
+	chanYscaB = []byte(channelYsca)
+	chanZscaB = []byte(channelZsca)
 )
 
 func parseMotion(s *decutil.LineScanner, joints []joint) (*ir.Animation, error) {
@@ -50,6 +53,8 @@ func parseMotion(s *decutil.LineScanner, joints []joint) (*ir.Animation, error) 
 			channels[i].Translations = make([][3]float32, frameCount)
 		case ir.TargetRotation:
 			channels[i].Rotations = make([][4]float32, frameCount)
+		case ir.TargetScale:
+			channels[i].Scales = make([][3]float32, frameCount)
 		}
 	}
 
@@ -75,6 +80,9 @@ func parseMotion(s *decutil.LineScanner, joints []joint) (*ir.Animation, error) 
 				globalIdx += axisCount
 			case ir.TargetRotation:
 				channels[ci].Rotations[f] = eulerToQuat(fieldsBuf, globalIdx, cm.rotOrder)
+				globalIdx += axisCount
+			case ir.TargetScale:
+				channels[ci].Scales[f] = readVec3(fieldsBuf, globalIdx)
 				globalIdx += axisCount
 			}
 		}
@@ -130,6 +138,7 @@ func buildChannelMap(joints []joint) []channelEntry {
 
 		hasPos := false
 		hasRot := false
+		hasScale := false
 		var rotOrder [axisCount]int
 
 		for _, ch := range j.channels {
@@ -138,6 +147,8 @@ func buildChannelMap(joints []joint) []channelEntry {
 				hasPos = true
 			case bytes.Equal(ch, chanXrotB) || bytes.Equal(ch, chanYrotB) || bytes.Equal(ch, chanZrotB):
 				hasRot = true
+			case bytes.Equal(ch, chanXscaB) || bytes.Equal(ch, chanYscaB) || bytes.Equal(ch, chanZscaB):
+				hasScale = true
 			}
 		}
 
@@ -150,6 +161,9 @@ func buildChannelMap(joints []joint) []channelEntry {
 		}
 		if hasRot {
 			entries = append(entries, channelEntry{jointIdx: i, target: ir.TargetRotation, rotOrder: rotOrder})
+		}
+		if hasScale {
+			entries = append(entries, channelEntry{jointIdx: i, target: ir.TargetScale})
 		}
 	}
 

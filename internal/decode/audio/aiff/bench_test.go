@@ -2,6 +2,8 @@ package aiff
 
 import (
 	"bytes"
+	"encoding/binary"
+	"math"
 	"testing"
 
 	"github.com/gophics/ravenporter/detect"
@@ -44,6 +46,31 @@ func BenchmarkDecode_AIFC_Sowt(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		_, _ = d.Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	}
+}
+
+func BenchmarkDecode_AIFC_Twos(b *testing.B) {
+	pcm := make([]byte, 44100*2)
+	data := buildAIFC("twos", 1, 44100, 16, 44100, pcm)
+	d := &Decoder{}
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = d.Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	}
+}
+
+func BenchmarkDecodeSamples_AIFC_Fl64(b *testing.B) {
+	pcm := make([]byte, 44100*8)
+	value := math.Float64bits(0.5)
+	for i := range 44100 {
+		binary.BigEndian.PutUint64(pcm[i*8:], value)
+	}
+	data := buildAIFC("fl64", 1, 44100, 64, 44100, pcm)
+	d := &Decoder{}
+	b.ReportAllocs()
+	for b.Loop() {
+		asset, _ := d.Decode(bytes.NewReader(data), detect.DecodeOptions{})
+		_, _ = asset.AudioClips[0].DecodeSamples()
 	}
 }
 

@@ -64,6 +64,7 @@ func TestDecodeErrAndValueHelpers(t *testing.T) {
 	assert.Equal(t, ir.Layout5_1, LayoutFromChannels(6))
 	assert.Equal(t, ir.Layout7_1, LayoutFromChannels(8))
 	assert.Equal(t, ir.BitDepth24, BitDepthFromBits(24))
+	assert.Equal(t, ir.BitDepth64, BitDepthFromBits(64))
 	assert.Equal(t, ir.BitDepth16, BitDepthFromBits(12))
 	assert.Equal(t, [4]float32{1, 128.0 / 255.0, 0, 1}, ColorToFactor(255, 128, 0))
 	assert.InDelta(t, 1.25, ParseF32("1.25"), 0.0001)
@@ -110,6 +111,12 @@ func TestPCMAndCodecHelpers(t *testing.T) {
 	assert.InDelta(t, 2147483647.0/2147483648.0, dst[0], 0.0001)
 
 	DecodeIEEEFloat([]byte{0x00, 0x00, 0x00, 0x3F}, dst, Bytes32)
+	assert.InDelta(t, 0.5, dst[0], 0.0001)
+	DecodeIEEEFloat([]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xE0, 0x3F}, dst, Bytes64)
+	assert.InDelta(t, 0.5, dst[0], 0.0001)
+	DecodeIEEEFloatBE([]byte{0x3F, 0x00, 0x00, 0x00}, dst, Bytes32)
+	assert.InDelta(t, 0.5, dst[0], 0.0001)
+	DecodeIEEEFloatBE([]byte{0x3F, 0xE0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, dst, Bytes64)
 	assert.InDelta(t, 0.5, dst[0], 0.0001)
 
 	DecodeAlaw([]byte{0xD5}, dst)

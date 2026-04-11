@@ -120,3 +120,36 @@ func TestRegistered(t *testing.T) {
 	_, ok := detect.NewRegistry(Registrations()...).Lookup(ir.FormatBVH)
 	assert.True(t, ok)
 }
+
+func TestBVHDecodeScaleChannels(t *testing.T) {
+	const input = "HIERARCHY\n" +
+		"ROOT Root\n" +
+		"{\n" +
+		"OFFSET 0 0 0\n" +
+		"CHANNELS 9 Xposition Yposition Zposition Xrotation Yrotation Zrotation Xscale Yscale Zscale\n" +
+		"}\n" +
+		"MOTION\n" +
+		"Frames: 2\n" +
+		"Frame Time: 0.0333333\n" +
+		"0 0 0 0 0 0 1 1 1\n" +
+		"0 0 0 0 0 0 2 3 4\n"
+
+	dec := &Decoder{}
+	scene, err := dec.Decode(bytes.NewReader([]byte(input)), detect.DecodeOptions{})
+	require.NoError(t, err)
+	require.Len(t, scene.Animations, 1)
+
+	var scale *ir.AnimationChannel
+	for i := range scene.Animations[0].Channels {
+		ch := &scene.Animations[0].Channels[i]
+		if ch.NodeIndex == 0 && ch.Target == ir.TargetScale {
+			scale = ch
+			break
+		}
+	}
+
+	require.NotNil(t, scale)
+	require.Len(t, scale.Scales, 2)
+	assert.Equal(t, [3]float32{1, 1, 1}, scale.Scales[0])
+	assert.Equal(t, [3]float32{2, 3, 4}, scale.Scales[1])
+}
