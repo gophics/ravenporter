@@ -24,9 +24,9 @@ None.
 ## Out Of Scope For RavenPorter
 
 - Header `comment` and `obj_info` records are not imported into RavenPorter metadata.
-- Custom PLY elements beyond `vertex`, `face`, and `edge` are not interpreted by the current importer.
+- Custom PLY elements beyond `vertex`, `face`, and `edge` are not interpreted.
 
 ## Notes
 
-- None.
+None.
 

@@ -30,5 +30,5 @@ None.
 
 ## Notes
 
-- None.
+None.
 

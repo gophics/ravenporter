@@ -29,7 +29,7 @@ RavenPorter imports glTF 2.0 assets from JSON `.gltf` files and binary `.glb` co
 
 ## Out Of Scope For RavenPorter
 
-- `KHR_materials_variants` is imported as metadata only; RavenPorter does not automatically resolve or switch the active material variant.
+- `KHR_materials_variants` names and mappings are preserved, but RavenPorter does not automatically resolve or switch the active material variant.
 
 ## Notes
 

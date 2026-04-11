@@ -13,7 +13,7 @@ RavenPorter imports Autodesk FBX scenes from binary and ASCII `.fbx` files. It h
 
 - Binary FBX (`v7400`, `v7500+`) and ASCII FBX scene files
 - Mesh geometry, polygon triangulation, normals, binormals, UV sets, vertex colors, and tangents
-- Materials plus diffuse, emissive, normal, ambient, and specular texture bindings, with ambient and specular texture links surfaced through `Material.Properties`
+- Materials plus diffuse, emissive, normal, ambient, and specular texture bindings
 - Model hierarchies, cameras, lights, and `GlobalSettings` axis/unit metadata
 - Skeletal skinning with clusters and inverse bind matrices, keyframe animation on translation/rotation/scale channels, blend shapes, and multiple animation stacks/takes
 - Embedded textures and zlib-compressed array payloads
@@ -29,5 +29,5 @@ None.
 
 ## Notes
 
-- None.
+None.
 

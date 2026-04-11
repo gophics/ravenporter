@@ -14,12 +14,13 @@ RavenPorter imports Biovision Hierarchy motion-capture data from `.bvh` files. I
 - `HIERARCHY` sections with `ROOT`, nested `JOINT` nodes, and `End Site` terminals
 - Parent-relative `OFFSET` transforms and per-joint `CHANNELS` layouts
 - 6-DOF roots and rotation-only joints
+- Scale channels when they are present as `Xscale`, `Yscale`, and `Zscale`
 - Arbitrary Euler rotation orders such as `ZXY`, `XYZ`, and `YZX`
 - `MOTION` sections with frame counts, frame time, and per-frame channel samples
 
 ## Unimplemented Runtime-Relevant Features
 
-- Scale or other custom channel types beyond translation and rotation are not supported.
+- Custom channel types beyond translation, rotation, and scale are not supported.
 
 ## Out Of Scope For RavenPorter
 
@@ -27,5 +28,5 @@ RavenPorter imports Biovision Hierarchy motion-capture data from `.bvh` files. I
 
 ## Notes
 
-- None.
+None.
 

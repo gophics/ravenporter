@@ -11,5 +11,6 @@ Each decoder page separates gaps into two buckets:
 
 - `Unimplemented Runtime-Relevant Features` covers source-format features that would improve import fidelity, practical compatibility, or runtime asset correctness if RavenPorter added them.
 - `Out Of Scope For RavenPorter` covers features RavenPorter deliberately does not chase because they are mostly archival metadata, editor fidelity, or source-authoring detail with weak runtime payoff.
+- Empty sections are written as `None.` so every decoder page keeps the same shape.
 
 That split is intentional. RavenPorter is not trying to be a source-faithful archival parser for every format family. It is trying to import the parts of those formats that matter when the end result is cooked runtime data.

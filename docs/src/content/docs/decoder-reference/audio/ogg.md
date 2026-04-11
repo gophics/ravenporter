@@ -24,9 +24,9 @@ None.
 ## Out Of Scope For RavenPorter
 
 - Ogg codecs other than Vorbis are not handled by this decoder.
-- Only the mapped Vorbis comment fields and `METADATA_BLOCK_PICTURE` album art are surfaced.
+- Only common Vorbis comment fields and `METADATA_BLOCK_PICTURE` album art are surfaced.
 
 ## Notes
 
-- None.
+None.
 

@@ -17,11 +17,11 @@ RavenPorter imports Khronos texture containers from `.ktx` and `.ktx2` files. It
 - Compressed vs. uncompressed payload detection
 - KTX1 and KTX2 mipmap count metadata
 - 2D, 3D, cube, 2D array, and cube-array topology classification from container header fields
-- KTX2 `Zstd` supercompression identification and level inflation
+- KTX2 `Zstd` and `ZLIB` supercompression inflation
 
 ## Unimplemented Runtime-Relevant Features
 
-- KTX2 `BasisLZ` and `ZLIB` supercompression are not inflated.
+- KTX2 `BasisLZ` supercompression is not inflated.
 
 ## Out Of Scope For RavenPorter
 
@@ -29,5 +29,5 @@ RavenPorter imports Khronos texture containers from `.ktx` and `.ktx2` files. It
 
 ## Notes
 
-- None.
+None.
 

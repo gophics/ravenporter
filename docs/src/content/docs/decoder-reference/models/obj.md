@@ -30,10 +30,10 @@ None.
 - The Wavefront binary `.mod` variant mentioned in the original OBJ appendix is not supported.
 - Only RGB numeric forms are imported for MTL color statements; `xyz` and spectral `.rfl` forms are not supported.
 - The optional third `vt` coordinate is not preserved; RavenPorter imports texture coordinates as 2D UVs.
-- Free-form `step` directives do not control tessellation density; RavenPorter uses fixed internal sampling for imported curves and surfaces.
+- Free-form `step` directives do not control tessellation density; RavenPorter uses fixed sampling for imported curves and surfaces.
 - Only a subset of MTL texture-map options affect imported material state, primarily `-s`, `-o`, and `-bm`.
 
 ## Notes
 
-- None.
+None.
 

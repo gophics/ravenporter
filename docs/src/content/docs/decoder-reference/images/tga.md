@@ -12,7 +12,9 @@ RavenPorter imports Truevision TGA images from `.tga` files. It handles the true
 ## Supported Specification Features
 
 - Image types `1`, `2`, `3`, `9`, `10`, and `11`
-- 8-bit indexed and grayscale pixels plus 16-bit, 24-bit, and 32-bit truecolor pixels
+- 8-bit indexed pixels
+- 8-bit grayscale pixels and 16-bit grayscale-plus-alpha pixels
+- 16-bit, 24-bit, and 32-bit truecolor pixels
 - Vertical and right-to-left scanline origin handling
 - Uncompressed RGB and grayscale images
 - RLE-compressed RGB, grayscale, and indexed images
@@ -20,13 +22,14 @@ RavenPorter imports Truevision TGA images from `.tga` files. It handles the true
 
 ## Unimplemented Runtime-Relevant Features
 
-- Pixel depths and image types outside the imported set are not supported.
+None.
 
 ## Out Of Scope For RavenPorter
 
-None.
+- Legacy TGA image types `32` and `33` that use Huffman, delta, and quadtree-style compression are not supported.
+- Indexed TGA variants with pixel indices wider than 8 bits are not imported.
 
 ## Notes
 
-- None.
+None.
 

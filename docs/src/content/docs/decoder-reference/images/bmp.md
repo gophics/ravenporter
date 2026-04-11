@@ -13,23 +13,24 @@ RavenPorter imports Windows Bitmap images from `.bmp` files. It covers the commo
 
 - `BITMAPCOREHEADER` and modern DIB header variants
 - 1-bit, 4-bit, and 8-bit indexed palette images
-- 16-bit bitfield or RGB555-style bitmap variants
-- 24-bit RGB and 32-bit RGBA bitmap variants
+- 15-bit RGB555-style and 16-bit bitfield bitmap variants
+- 24-bit RGB, 32-bit RGBA, and 64-bit RGBA bitmap variants
 - Bottom-up and top-down scanline orientation
 - `BI_RGB` uncompressed pixel storage
-- `BI_BITFIELDS` channel masks
+- `BI_BITFIELDS` and `BI_ALPHABITFIELDS` channel masks
 - `RLE4` and `RLE8` compressed images
 
 ## Unimplemented Runtime-Relevant Features
 
-- BMP bit depths outside the imported `1`, `4`, `8`, `16`, `24`, and `32` bits-per-pixel variants are not supported.
-- Compression types beyond `BI_RGB`, `BI_BITFIELDS`, `RLE4`, and `RLE8`, such as embedded `BI_JPEG`, `BI_PNG`, and CMYK variants, are not supported.
+None.
 
 ## Out Of Scope For RavenPorter
 
-None.
+- Embedded `BI_JPEG` and `BI_PNG` payloads are not supported.
+- CMYK-family BMP compression modes are not supported.
+- Obscure legacy bit depths outside the imported `1`, `4`, `8`, `15`, `16`, `24`, `32`, and `64` bits-per-pixel variants are not a target for this runtime importer.
 
 ## Notes
 
-- None.
+- 64-bit BMP pixels are converted into 8-bit RGBA images during import.
 

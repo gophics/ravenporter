@@ -11,15 +11,15 @@ RavenPorter imports AIFF and AIFF-C audio from `.aiff` and `.aif` files. It cove
 
 ## Supported Specification Features
 
-- AIFF uncompressed audio and AIFF-C compression tags `NONE`, `sowt`, `fl32`, `alaw`, `ulaw`, and `ima4`
-- 8-bit, 16-bit, 24-bit, and 32-bit sample depths
+- AIFF uncompressed audio and AIFF-C compression tags `NONE`, `raw `, `twos`, `TWOS`, `in24`, `in32`, `sowt`, `fl32`, `fl64`, `alaw`, `ulaw`, and `ima4`
+- 8-bit, 16-bit, 24-bit, and 32-bit integer sample depths plus 64-bit floating-point AIFF-C audio
 - Mono, stereo, and multichannel layouts
 - Sustain and release loop points
 - Text metadata chunks such as `NAME`, `AUTH`, and `ANNO`
 
 ## Unimplemented Runtime-Relevant Features
 
-- AIFF-C codec tags beyond `NONE`, `sowt`, `fl32`, `alaw`, `ulaw`, and `ima4` are not supported.
+- AIFF-C codec tags beyond `NONE`, `raw `, `twos`, `TWOS`, `in24`, `in32`, `sowt`, `fl32`, `fl64`, `alaw`, `ulaw`, and `ima4` are not supported.
 
 ## Out Of Scope For RavenPorter
 
@@ -27,5 +27,5 @@ RavenPorter imports AIFF and AIFF-C audio from `.aiff` and `.aif` files. It cove
 
 ## Notes
 
-- None.
+None.
 
