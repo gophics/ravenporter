@@ -34,14 +34,17 @@ const (
 	bmpBPP1  = 1
 	bmpBPP4  = 4
 	bmpBPP8  = 8
+	bmpBPP15 = 15
 	bmpBPP16 = 16
 	bmpBPP24 = 24
 	bmpBPP32 = 32
+	bmpBPP64 = 64
 
 	bmpCompressionRGB  = 0
 	bmpCompressionRLE8 = 1
 	bmpCompressionRLE4 = 2
 	bmpCompressionBF   = 3
+	bmpCompressionABF  = 6
 
 	bmpBitsPerByte = 8
 	bmpBPPByte32   = 4
@@ -68,9 +71,11 @@ const (
 	bmpMaskSize     = 4
 	bmpCorePalSize  = 3
 	bmpBPP16Bytes   = bmpBPP16 / bmpBitsPerByte
+	bmpBPP64Bytes   = bmpBPP64 / bmpBitsPerByte
 	bmpOneBitMask   = 0x01
 	bmpColorMax     = 255
 	bmpHighBitShift = 7
+	bmpBitsPerDWord = 32
 )
 
 var (
@@ -221,12 +226,15 @@ func parseBMPLayout(dib []byte) (bmpLayout, error) {
 	if !isSupportedBMPBPP(layout.bpp) || !isSupportedBMPCompression(layout.compression) {
 		return bmpLayout{}, errBMPUnsupported
 	}
+	if layout.bpp == bmpBPP64 && layout.compression != bmpCompressionRGB {
+		return bmpLayout{}, errBMPUnsupported
+	}
 	return layout, nil
 }
 
 func isSupportedBMPBPP(bpp int) bool {
 	switch bpp {
-	case bmpBPP1, bmpBPP4, bmpBPP8, bmpBPP16, bmpBPP24, bmpBPP32:
+	case bmpBPP1, bmpBPP4, bmpBPP8, bmpBPP15, bmpBPP16, bmpBPP24, bmpBPP32, bmpBPP64:
 		return true
 	default:
 		return false
@@ -235,7 +243,7 @@ func isSupportedBMPBPP(bpp int) bool {
 
 func isSupportedBMPCompression(compression uint32) bool {
 	switch compression {
-	case bmpCompressionRGB, bmpCompressionBF, bmpCompressionRLE4, bmpCompressionRLE8:
+	case bmpCompressionRGB, bmpCompressionBF, bmpCompressionABF, bmpCompressionRLE4, bmpCompressionRLE8:
 		return true
 	default:
 		return false
@@ -255,7 +263,7 @@ func bmpPaletteColors(dib []byte, bpp, dibSize int) int {
 }
 
 func applyBMPMasks(data []byte, info *bmpInfo) {
-	if info.compression == bmpCompressionBF && info.dibSize >= bmpDIBHeaderMinSize {
+	if (info.compression == bmpCompressionBF || info.compression == bmpCompressionABF) && info.dibSize >= bmpDIBHeaderMinSize {
 		maskOff := bmpFileHeaderSize + info.dibSize
 		if maskOff+bmpMaskSize*3 > len(data) {
 			return
@@ -268,7 +276,7 @@ func applyBMPMasks(data []byte, info *bmpInfo) {
 		}
 		return
 	}
-	if info.bpp == bmpBPP16 {
+	if info.bpp == bmpBPP15 || info.bpp == bmpBPP16 {
 		info.rMask = 0x7C00
 		info.gMask = 0x03E0
 		info.bMask = 0x001F
@@ -282,8 +290,11 @@ func readBMPPixels(data []byte, info bmpInfo) ([]byte, error) {
 	if info.bpp <= bmpMaxPalBPP {
 		return readBMPPalette(data, info)
 	}
-	if info.bpp == bmpBPP16 {
+	if info.bpp == bmpBPP15 || info.bpp == bmpBPP16 {
 		return readBMP16(data, info)
+	}
+	if info.bpp == bmpBPP64 {
+		return readBMP64(data, info)
 	}
 
 	bytesPerPixel := info.bpp / bmpBitsPerByte
@@ -380,7 +391,7 @@ func readBMPPalette(data []byte, info bmpInfo) ([]byte, error) {
 }
 
 func readBMP16(data []byte, info bmpInfo) ([]byte, error) {
-	rowSize := (info.width*bmpBPP16/bmpBitsPerByte + bmpRowAlign) & ^bmpRowAlign
+	rowSize := ((info.width*info.bpp + bmpBitsPerDWord - 1) / bmpBitsPerDWord) * bmpBPPByte32
 	totalSize := rowSize * info.height
 	if info.pixelOff+totalSize > len(data) {
 		return nil, errBMPTruncated
@@ -405,6 +416,33 @@ func readBMP16(data []byte, info bmpInfo) ([]byte, error) {
 			} else {
 				rgba[dstOff+3] = 0xFF
 			}
+		}
+	}
+
+	return rgba, nil
+}
+
+func readBMP64(data []byte, info bmpInfo) ([]byte, error) {
+	rowSize := (info.width*bmpBPP64Bytes + bmpRowAlign) & ^bmpRowAlign
+	totalSize := rowSize * info.height
+	if info.pixelOff+totalSize > len(data) {
+		return nil, errBMPTruncated
+	}
+
+	rgba := make([]byte, info.width*info.height*rgbaChannels)
+	for y := range info.height {
+		srcY := y
+		if !info.topDown {
+			srcY = info.height - 1 - y
+		}
+		srcRow := data[info.pixelOff+srcY*rowSize:]
+		for x := range info.width {
+			srcOff := x * bmpBPP64Bytes
+			dstOff := (y*info.width + x) * rgbaChannels
+			rgba[dstOff] = byte(binread.ReadU16LE(srcRow[srcOff+4:]) >> bmpBitsPerByte)
+			rgba[dstOff+1] = byte(binread.ReadU16LE(srcRow[srcOff+2:]) >> bmpBitsPerByte)
+			rgba[dstOff+2] = byte(binread.ReadU16LE(srcRow[srcOff:]) >> bmpBitsPerByte)
+			rgba[dstOff+3] = byte(binread.ReadU16LE(srcRow[srcOff+6:]) >> bmpBitsPerByte)
 		}
 	}
 

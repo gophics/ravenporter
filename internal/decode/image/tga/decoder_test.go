@@ -64,6 +64,16 @@ func BenchmarkDecode(b *testing.B) {
 	}
 }
 
+func BenchmarkDecodeGrayscale(b *testing.B) {
+	data := buildTGA(3, 16, 16, 8, 0x20, make([]byte, 16*16))
+	dec := &tga.Decoder{}
+	opts := detect.DecodeOptions{}
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = dec.Decode(bytes.NewReader(data), opts)
+	}
+}
+
 func TestTGADecodeWithoutPixels(t *testing.T) {
 	dec := &tga.Decoder{}
 	scene, err := dec.Decode(bytes.NewReader(tgaData), detect.DecodeOptions{})
@@ -186,6 +196,40 @@ func TestTGA32Bit(t *testing.T) {
 	assert.Equal(t, byte(0x80), pb.Data[3]) // A
 }
 
+func TestTGA16BitTruecolor(t *testing.T) {
+	tests := []struct {
+		name       string
+		descriptor byte
+		pixel      []byte
+		want       []byte
+	}{
+		{
+			name:       "opaque without attribute bit",
+			descriptor: 0x20,
+			pixel:      []byte{0x00, 0x7C},
+			want:       []byte{0xF8, 0x00, 0x00, 0xFF},
+		},
+		{
+			name:       "attribute bit becomes alpha",
+			descriptor: 0x21,
+			pixel:      []byte{0x00, 0x00},
+			want:       []byte{0x00, 0x00, 0x00, 0x00},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := buildTGA(2, 1, 1, 16, tt.descriptor, tt.pixel)
+			scene, err := (&tga.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+			require.NoError(t, err)
+			pb, decErr := scene.Images[0].DecodePixels()
+			require.NoError(t, decErr)
+			require.NotNil(t, pb)
+			assert.Equal(t, tt.want, pb.Data[:4])
+		})
+	}
+}
+
 func TestTGAGrayscale(t *testing.T) {
 	data := buildTGA(3, 2, 1, 8, 0x20, []byte{0x20, 0xE0})
 	scene, err := (&tga.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
@@ -208,6 +252,20 @@ func TestTGAGrayscaleAlpha16Bit(t *testing.T) {
 	require.NotNil(t, pb)
 	assert.Equal(t, byte(0x40), pb.Data[0])
 	assert.Equal(t, byte(0x7F), pb.Data[3])
+}
+
+func TestTGARLEGrayscale(t *testing.T) {
+	var rle bytes.Buffer
+	rle.WriteByte(0x81)
+	rle.WriteByte(0x20)
+
+	data := buildTGA(11, 2, 1, 8, 0x20, rle.Bytes())
+	scene, err := (&tga.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, []byte{0x20, 0x20, 0x20, 0xFF, 0x20, 0x20, 0x20, 0xFF}, pb.Data[:8])
 }
 
 func TestTGAFlipVertical(t *testing.T) {
@@ -311,10 +369,26 @@ func TestTGAColorMapped16Bit(t *testing.T) {
 }
 
 func TestTGADecodeErrors(t *testing.T) {
+	tests := []struct {
+		name         string
+		data         []byte
+		decodePixels bool
+	}{
+		{name: "empty", data: []byte{}},
+		{name: "indexed 16-bit pixels", data: buildTGA(1, 1, 1, 16, 0x20, []byte{0x00, 0x00}), decodePixels: true},
+	}
+
 	dec := &tga.Decoder{}
-	_, err := dec.Decode(bytes.NewReader([]byte{}), detect.DecodeOptions{})
-	// Should either error or return a 0x0 image
-	if err != nil {
-		assert.Error(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			scene, err := dec.Decode(bytes.NewReader(tt.data), detect.DecodeOptions{})
+			if !tt.decodePixels {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			_, decErr := scene.Images[0].DecodePixels()
+			assert.Error(t, decErr)
+		})
 	}
 }

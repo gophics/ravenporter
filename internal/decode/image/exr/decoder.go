@@ -1,8 +1,6 @@
 package exr
 
 import (
-	"bytes"
-	"compress/zlib"
 	"encoding/binary"
 	"io"
 	"math"
@@ -13,6 +11,7 @@ import (
 	"github.com/gophics/ravenporter/internal/imgutil"
 	"github.com/gophics/ravenporter/internal/pixel"
 	"github.com/gophics/ravenporter/internal/piz"
+	"github.com/gophics/ravenporter/internal/pool"
 	"github.com/gophics/ravenporter/ir"
 )
 
@@ -54,6 +53,8 @@ const (
 
 	exrChunkZIP = 16
 	exrChunkPIZ = 32
+
+	exrPredictorStride = 2
 )
 
 var magicEXR = []byte{0x76, 0x2F, 0x31, 0x01}
@@ -353,12 +354,13 @@ func decodeEXRTiles(d *ir.ImageAsset, raw []byte, hdrEnd int, comprType exrCompr
 			dec := exrRLEDecompress(raw[pos:pos+dataSize], curW*curH*nChan*bytesPerChan)
 			tileData = dec
 		case exrComprZIPS, exrComprZIP16:
-			dec, err := zlibDecompress(raw[pos : pos+dataSize])
-			if err != nil {
+			tileSize := curW * curH * nChan * bytesPerChan
+			dec := make([]byte, tileSize)
+			if err := exrDecompressZIP(dec, raw[pos:pos+dataSize]); err != nil {
 				pos += dataSize
 				continue
 			}
-			tileData = exrReconstructPredictor(dec)
+			tileData = dec
 		case exrComprPIZType:
 			dec, err := piz.Decompress(raw[pos:pos+dataSize], nChan, curW, curH)
 			if err != nil {
@@ -478,11 +480,12 @@ func exrDecompressChunk(raw []byte, pos int, ct exrCompr, nChan, width, bytesPer
 		decompressed := exrRLEDecompress(raw[pos:pos+dataSize], chunkSize)
 		return decompressed, exrScanlineHdrSize + dataSize, true
 	case exrComprZIPS, exrComprZIP16:
-		decompressed, err := zlibDecompress(raw[pos : pos+dataSize])
-		if err != nil {
+		chunkSize := width * bytesPerChan * nChan * linesInChunk
+		decompressed := make([]byte, chunkSize)
+		if err := exrDecompressZIP(decompressed, raw[pos:pos+dataSize]); err != nil {
 			return nil, exrScanlineHdrSize + dataSize, true
 		}
-		return exrReconstructPredictor(decompressed), exrScanlineHdrSize + dataSize, true
+		return decompressed, exrScanlineHdrSize + dataSize, true
 	case exrComprPIZType:
 		decompressed, err := piz.Decompress(raw[pos:pos+dataSize], nChan, width, linesInChunk)
 		if err != nil {
@@ -512,43 +515,38 @@ func exrZeroedFallback(pixelCount int) *ir.PixelBuffer {
 	}
 }
 
-func zlibDecompress(data []byte) ([]byte, error) {
-	r, err := zlib.NewReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
+var exrZlibReader pool.ZlibReader
+
+func exrDecompressZIP(dst, src []byte) error {
+	scratch := pool.GetBuffer(len(dst))
+	defer pool.PutBuffer(scratch)
+
+	if err := exrZlibReader.DecompressInto(scratch, src); err != nil {
+		return err
 	}
-	out, readErr := io.ReadAll(r)
-	closeErr := r.Close()
-	if readErr != nil {
-		return nil, readErr
-	}
-	if closeErr != nil {
-		return nil, closeErr
-	}
-	return out, nil
+	exrReconstructPredictor(dst, scratch)
+	return nil
 }
 
-func exrReconstructPredictor(data []byte) []byte {
-	if len(data) < 2 { //nolint:mnd // need at least 2 bytes
-		return data
+func exrReconstructPredictor(dst, data []byte) {
+	if len(data) == 0 {
+		return
 	}
-	// Delta decode.
-	out := make([]byte, len(data))
-	out[0] = data[0]
+	if len(data) == 1 {
+		dst[0] = data[0]
+		return
+	}
 	for i := 1; i < len(data); i++ {
-		out[i] = out[i-1] + data[i]
+		data[i] += data[i-1]
 	}
-	// Interleave reorder: first half = even bytes, second half = odd bytes.
-	half := len(out) / 2 //nolint:mnd // split point
-	result := make([]byte, len(out))
+	half := len(data) / exrPredictorStride
 	for i := range half {
-		result[2*i] = out[i]
-		result[2*i+1] = out[half+i]
+		dst[2*i] = data[i]
+		dst[2*i+1] = data[half+i]
 	}
-	if len(out)%2 != 0 {
-		result[len(result)-1] = out[len(out)-1]
+	if len(data)%2 != 0 {
+		dst[len(dst)-1] = data[len(data)-1]
 	}
-	return result
 }
 
 func readScanlinePixels(data []byte, result []float32, y, w, nChan, bytesPerChan, pixelType int) {

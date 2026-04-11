@@ -14,6 +14,12 @@ import (
 	"github.com/gophics/ravenporter/ir"
 )
 
+// Shared animation metadata keys used by animated image decoders.
+const (
+	MetaKeyDelayNum = "DelayNum"
+	MetaKeyDelayDen = "DelayDen"
+)
+
 // DecodeErrStr wraps a decode failure into a formatted error using a string format name.
 func DecodeErrStr(name string, cause error) error {
 	return decutil.DecodeErr(ir.FormatID(name), "failed to decode image", cause)

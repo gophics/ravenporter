@@ -2,9 +2,12 @@ package ktx_test
 
 import (
 	"bytes"
+	"compress/zlib"
+	"encoding/binary"
 	"os"
 	"testing"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -28,6 +31,10 @@ func putU32LE(b []byte, v uint32) {
 	b[1] = byte(v >> 8)
 	b[2] = byte(v >> 16)
 	b[3] = byte(v >> 24)
+}
+
+func putU64LE(b []byte, v uint64) {
+	binary.LittleEndian.PutUint64(b, v)
 }
 
 func buildKTX1Header(width, height, depth, layers, faces, mipLevels uint32) []byte {
@@ -80,23 +87,25 @@ func TestKTX2SyntheticHeader(t *testing.T) {
 }
 
 func TestKTX2ZstdSupercompression(t *testing.T) {
-	data := make([]byte, 80)
-	copy(data[0:], "\xAB\x4B\x54\x58\x20\x32\x30\xBB\x0D\x0A\x1A\x0A")
+	original := []byte{1, 2, 3, 4}
+	data := buildKTX2Supercompressed(t, 157, 2, original, compressZstd(t, original))
 
-	putU32LE(data[12:], 157) // ASTC
-	putU32LE(data[20:], 256)
-	putU32LE(data[24:], 128)
-	putU32LE(data[40:], 1) // 1 mip level
-	putU32LE(data[44:], 2) // Zstd supercompression
-
-	dec := &ktx.Decoder{}
-	scene, err := dec.Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	scene, err := (&ktx.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
 	require.NoError(t, err)
 
-	img := scene.Images[0]
-	assert.Equal(t, 256, img.Width)
-	assert.Equal(t, 128, img.Height)
-	assert.True(t, img.IsGPUCompressed())
+	assertKTX2LevelRewritten(t, scene.Images[0].Compressed, original)
+	assert.True(t, scene.Images[0].IsGPUCompressed())
+}
+
+func TestKTX2ZlibSupercompression(t *testing.T) {
+	original := []byte{9, 8, 7, 6, 5}
+	data := buildKTX2Supercompressed(t, 157, 3, original, compressZlib(t, original))
+
+	scene, err := (&ktx.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+
+	assertKTX2LevelRewritten(t, scene.Images[0].Compressed, original)
+	assert.True(t, scene.Images[0].IsGPUCompressed())
 }
 
 func BenchmarkDecode(b *testing.B) {
@@ -105,6 +114,17 @@ func BenchmarkDecode(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		_, _ = dec.Decode(bytes.NewReader(ktxData), opts)
+	}
+}
+
+func BenchmarkDecodeKTX2Zlib(b *testing.B) {
+	original := []byte{9, 8, 7, 6, 5}
+	data := buildKTX2Supercompressed(nil, 157, 3, original, compressZlibBytes(original))
+	dec := &ktx.Decoder{}
+	opts := detect.DecodeOptions{}
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = dec.Decode(bytes.NewReader(data), opts)
 	}
 }
 
@@ -196,6 +216,64 @@ func TestKTXTruncatedHeader(t *testing.T) {
 	dec := &ktx.Decoder{}
 	_, err := dec.Decode(bytes.NewReader([]byte{0xAB, 0x4B}), detect.DecodeOptions{})
 	assert.Error(t, err) // Should error on truncated file
+}
+
+func compressZlib(t *testing.T, data []byte) []byte {
+	t.Helper()
+	return compressZlibBytes(data)
+}
+
+func compressZlibBytes(data []byte) []byte {
+	var buf bytes.Buffer
+	writer := zlib.NewWriter(&buf)
+	_, _ = writer.Write(data)
+	_ = writer.Close()
+	return buf.Bytes()
+}
+
+func compressZstd(t *testing.T, data []byte) []byte {
+	t.Helper()
+	encoder, err := zstd.NewWriter(nil, zstd.WithEncoderConcurrency(1))
+	require.NoError(t, err)
+	defer encoder.Close()
+	return encoder.EncodeAll(data, nil)
+}
+
+func buildKTX2Supercompressed(t *testing.T, vkFormat, scheme uint32, level, payload []byte) []byte {
+	if t != nil {
+		t.Helper()
+	}
+	const (
+		headerSize     = 80
+		levelEntrySize = 24
+	)
+	data := make([]byte, headerSize+levelEntrySize+len(payload))
+	copy(data[0:], "\xAB\x4B\x54\x58\x20\x32\x30\xBB\x0D\x0A\x1A\x0A")
+	putU32LE(data[12:], vkFormat)
+	putU32LE(data[20:], 32)
+	putU32LE(data[24:], 16)
+	putU32LE(data[36:], 1)
+	putU32LE(data[40:], 1)
+	putU32LE(data[44:], scheme)
+	levelOffset := headerSize + levelEntrySize
+	putU64LE(data[80:], uint64(levelOffset))
+	putU64LE(data[88:], uint64(len(payload)))
+	putU64LE(data[96:], uint64(len(level)))
+	copy(data[levelOffset:], payload)
+	return data
+}
+
+func assertKTX2LevelRewritten(t *testing.T, data, wantLevel []byte) {
+	t.Helper()
+	require.GreaterOrEqual(t, len(data), 104)
+	assert.Equal(t, uint32(0), binary.LittleEndian.Uint32(data[44:48]))
+	levelOffset := binary.LittleEndian.Uint64(data[80:88])
+	levelLength := binary.LittleEndian.Uint64(data[88:96])
+	uncompressedLength := binary.LittleEndian.Uint64(data[96:104])
+	assert.Equal(t, uint64(len(wantLevel)), levelLength)
+	assert.Equal(t, uint64(len(wantLevel)), uncompressedLength)
+	require.LessOrEqual(t, int(levelOffset+levelLength), len(data))
+	assert.Equal(t, wantLevel, data[levelOffset:levelOffset+levelLength])
 }
 
 func TestKTX2AllCompressionFormats(t *testing.T) {

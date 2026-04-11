@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"strconv"
 
 	"github.com/gophics/ravenporter/detect"
 	"github.com/gophics/ravenporter/internal/binread"
@@ -47,13 +46,13 @@ const (
 	ktx2SuperOff      = 44
 	ktx2IndexByteOff  = 80
 
+	ktx2SuperNone = 0
 	ktx2SuperZstd = 2
+	ktx2SuperZlib = 3
 
 	ktx2LevelEntrySize = 24
 	ktx2LevelFieldSize = 8
 	ktxCubeFaceCount   = 6
-
-	metaZstdInflatedSize = "ZstdInflatedSize"
 )
 
 const (
@@ -144,6 +143,12 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 	if err := imgutil.CheckPixelLimit(w, h, opts.MaxImagePixels); err != nil {
 		return nil, imgutil.DecodeErrStr(ktxName, err)
 	}
+	if isV2 {
+		raw, err = ktx2RewriteSupercompression(raw)
+		if err != nil {
+			return nil, imgutil.DecodeErrStr(ktxName, err)
+		}
+	}
 
 	decoded := &ir.ImageAsset{
 		Name:              ktxName,
@@ -158,10 +163,6 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 		Layers:            layers,
 		CompressionFormat: comp,
 		Compressed:        raw,
-	}
-
-	if err := ktx2InflateZstd(raw, decoded); err != nil {
-		return nil, imgutil.DecodeErrStr(ktxName, err)
 	}
 
 	return imgutil.BuildAsset(decoded, ir.FormatKTX), nil
@@ -324,46 +325,103 @@ func ktx2CompressionFormat(data []byte) ir.GPUCompression {
 	}
 }
 
-func ktx2InflateZstd(data []byte, decoded *ir.ImageAsset) error {
+func ktx2RewriteSupercompression(data []byte) ([]byte, error) {
 	if len(data) < ktx2HeaderSize {
-		return nil
+		return data, nil
 	}
 	superScheme := binread.ReadU32LE(data[ktx2SuperOff:])
-	if superScheme != ktx2SuperZstd {
-		return nil
+	if superScheme != ktx2SuperZstd && superScheme != ktx2SuperZlib {
+		return data, nil
 	}
 
 	levelCount := ktx2MipCount(data)
 	indexEnd := ktx2IndexByteOff + levelCount*ktx2LevelEntrySize
 	if indexEnd > len(data) {
-		return nil
+		return nil, errors.New("invalid ktx2 level index")
 	}
 
-	var inflated []byte
+	rewritten := make([]byte, len(data), ktx2RewriteCapacity(data, levelCount))
+	copy(rewritten, data)
+	binread.PutU32LE(rewritten[ktx2SuperOff:], ktx2SuperNone)
+
 	for i := range levelCount {
 		entryOff := ktx2IndexByteOff + i*ktx2LevelEntrySize
-		byteOff := binread.ReadU64LE(data[entryOff:])
-		byteLen := binread.ReadU64LE(data[entryOff+ktx2LevelFieldSize:])
+		byteOff := int(binread.ReadU64LE(data[entryOff:]))                              //nolint:gosec
+		byteLen := int(binread.ReadU64LE(data[entryOff+ktx2LevelFieldSize:]))           //nolint:gosec
+		uncompressedLen := int(binread.ReadU64LE(data[entryOff+ktx2LevelFieldSize*2:])) //nolint:gosec
 
 		endOff := byteOff + byteLen
-		if byteLen > uint64(len(data)) || endOff > uint64(len(data)) || endOff < byteOff {
-			break
+		if byteOff < 0 || byteLen < 0 || uncompressedLen < 0 || endOff > len(data) || endOff < byteOff {
+			return nil, errors.New("invalid ktx2 level range")
+		}
+		if uncompressedLen == 0 {
+			return nil, errors.New("invalid ktx2 level size")
 		}
 
-		out, err := pool.ZstdDecodeAll(data[byteOff:endOff])
+		rewritten = binread.AppendAligned(rewritten, ktx2LevelFieldSize)
+		levelOffset := len(rewritten)
+		rewritten = append(rewritten, make([]byte, uncompressedLen)...)
+		level := rewritten[levelOffset : levelOffset+uncompressedLen]
+		if err := ktx2InflateLevelInto(level, superScheme, data[byteOff:endOff], uncompressedLen); err != nil {
+			return nil, err
+		}
+		binread.PutU64LE(rewritten[entryOff:], uint64(levelOffset))
+		binread.PutU64LE(rewritten[entryOff+ktx2LevelFieldSize:], uint64(uncompressedLen))
+		binread.PutU64LE(rewritten[entryOff+ktx2LevelFieldSize*2:], uint64(uncompressedLen))
+	}
+	return rewritten, nil
+}
+
+func ktx2RewriteCapacity(data []byte, levelCount int) int {
+	capacity := len(data)
+	cursor := len(data)
+	for i := range levelCount {
+		entryOff := ktx2IndexByteOff + i*ktx2LevelEntrySize
+		if entryOff+ktx2LevelEntrySize > len(data) {
+			return capacity
+		}
+		uncompressedLen := int(binread.ReadU64LE(data[entryOff+ktx2LevelFieldSize*2:])) //nolint:gosec
+		if uncompressedLen <= 0 {
+			return capacity
+		}
+		cursor = alignKTX2Offset(cursor)
+		cursor += uncompressedLen
+	}
+	if cursor > capacity {
+		capacity = cursor
+	}
+	return capacity
+}
+
+func ktx2InflateLevelInto(dst []byte, scheme uint32, payload []byte, uncompressedLen int) error {
+	switch scheme {
+	case ktx2SuperZstd:
+		level, err := pool.ZstdDecodeAll(payload)
 		if err != nil {
 			return err
 		}
-		inflated = append(inflated, out...)
-	}
-
-	if len(inflated) > 0 {
-		if decoded.Metadata == nil {
-			decoded.Metadata = make(map[string]string, 1)
+		if len(level) != uncompressedLen {
+			return errors.New("invalid ktx2 zstd level size")
 		}
-		decoded.Metadata[metaZstdInflatedSize] = strconv.Itoa(len(inflated))
+		copy(dst, level)
+		return nil
+	case ktx2SuperZlib:
+		if err := ktx2ZlibReader.DecompressInto(dst, payload); err != nil {
+			return err
+		}
+		return nil
+	default:
+		return errors.New("unsupported ktx2 supercompression scheme")
 	}
-	return nil
+}
+
+var ktx2ZlibReader pool.ZlibReader
+
+func alignKTX2Offset(off int) int {
+	if rem := off % ktx2LevelFieldSize; rem != 0 {
+		return off + ktx2LevelFieldSize - rem
+	}
+	return off
 }
 
 func (d *Decoder) Extensions() []string { return []string{extKTX, extKTX2} }

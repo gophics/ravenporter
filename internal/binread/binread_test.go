@@ -71,3 +71,16 @@ func TestBufferPool(t *testing.T) {
 	pool.Put(&bad)
 	assert.NotNil(t, binread.DefaultBufferPool.Get())
 }
+
+func TestWriteAndAlignmentHelpers(t *testing.T) {
+	buf := make([]byte, 12)
+	binread.PutU32LE(buf[:4], 0x04030201)
+	binread.PutU64LE(buf[4:], 0x0C0B0A0908070605)
+
+	assert.Equal(t, uint32(0x04030201), binread.ReadU32LE(buf[:4]))
+	assert.Equal(t, uint64(0x0C0B0A0908070605), binread.ReadU64LE(buf[4:]))
+
+	aligned := binread.AppendAligned([]byte{1, 2, 3}, 8)
+	assert.Len(t, aligned, 8)
+	assert.Equal(t, []byte{1, 2, 3, 0, 0, 0, 0, 0}, aligned)
+}

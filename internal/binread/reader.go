@@ -19,6 +19,19 @@ func ReadF32BE(b []byte) float32 { return math.Float32frombits(binary.BigEndian.
 func ReadF64LE(b []byte) float64 { return math.Float64frombits(binary.LittleEndian.Uint64(b)) }
 func ReadF64BE(b []byte) float64 { return math.Float64frombits(binary.BigEndian.Uint64(b)) }
 
+func PutU32LE(b []byte, v uint32) { binary.LittleEndian.PutUint32(b, v) }
+func PutU64LE(b []byte, v uint64) { binary.LittleEndian.PutUint64(b, v) }
+
+func AppendAligned(dst []byte, alignment int) []byte {
+	if alignment <= 1 {
+		return dst
+	}
+	if rem := len(dst) % alignment; rem != 0 {
+		dst = append(dst, make([]byte, alignment-rem)...)
+	}
+	return dst
+}
+
 func ReadString(b []byte, maxLen int) string {
 	if maxLen > len(b) {
 		maxLen = len(b)

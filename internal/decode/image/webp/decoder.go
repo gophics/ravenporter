@@ -2,6 +2,7 @@ package webp
 
 import (
 	"bytes"
+	"image"
 	"io"
 
 	"github.com/gophics/ravenporter/detect"
@@ -43,7 +44,45 @@ func (d *Decoder) Probe(r io.ReadSeeker) bool {
 }
 
 func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, error) {
-	return imgutil.DecodeStdlibImage(r, opts, webpName, ir.ImageWebP, ir.FormatWebP)
+	raw, err := imgutil.ReadAllBytes(r, opts.MaxFileSize)
+	if err != nil {
+		return nil, imgutil.DecodeErrStr(webpName, err)
+	}
+
+	if isAnimatedWebP(raw) {
+		return decodeAnimatedWebP(raw, opts.MaxImagePixels)
+	}
+
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return nil, imgutil.DecodeErrStr(webpName, err)
+	}
+	if err := imgutil.CheckPixelLimit(cfg.Width, cfg.Height, opts.MaxImagePixels); err != nil {
+		return nil, imgutil.DecodeErrStr(webpName, err)
+	}
+
+	decoded := &ir.ImageAsset{
+		Name:       webpName,
+		Format:     ir.ImageWebP,
+		Width:      cfg.Width,
+		Height:     cfg.Height,
+		Channels:   ir.ChannelRGBA,
+		ColorSpace: ir.ColorSRGB,
+		MipLevels:  1,
+		Compressed: raw,
+		PixelDecode: func(d *ir.ImageAsset) (*ir.PixelBuffer, error) {
+			img, _, err := image.Decode(bytes.NewReader(d.Compressed))
+			if err != nil {
+				return nil, err
+			}
+			return &ir.PixelBuffer{
+				Data:     rgbaPixels(img, d.Width, d.Height),
+				DataType: ir.DataTypeUint8,
+				BitDepth: ir.BitDepth8,
+			}, nil
+		},
+	}
+	return imgutil.BuildAsset(decoded, ir.FormatWebP), nil
 }
 
 func (d *Decoder) Extensions() []string { return []string{extWebP} }

@@ -435,3 +435,36 @@ func BenchmarkDecode(b *testing.B) {
 		_, _ = dec.Decode(bytes.NewReader(exrData), opts)
 	}
 }
+
+func BenchmarkDecodeZIP(b *testing.B) {
+	pixelData := []byte{0x00, 0x00, 0x80, 0x3f}
+	var zlibBuf bytes.Buffer
+	zw := zlib.NewWriter(&zlibBuf)
+	_, _ = zw.Write(pixelData)
+	_ = zw.Close()
+	data := buildSyntheticEXR(1, 1, 2, false, zlibBuf.Bytes())
+
+	dec := &exr.Decoder{}
+	opts := detect.DecodeOptions{}
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = dec.Decode(bytes.NewReader(data), opts)
+	}
+}
+
+func BenchmarkDecodePixelsZIP(b *testing.B) {
+	pixelData := []byte{0x00, 0x00, 0x80, 0x3f}
+	var zlibBuf bytes.Buffer
+	zw := zlib.NewWriter(&zlibBuf)
+	_, _ = zw.Write(pixelData)
+	_ = zw.Close()
+	data := buildSyntheticEXR(1, 1, 2, false, zlibBuf.Bytes())
+
+	dec := &exr.Decoder{}
+	opts := detect.DecodeOptions{}
+	b.ReportAllocs()
+	for b.Loop() {
+		scene, _ := dec.Decode(bytes.NewReader(data), opts)
+		_, _ = scene.Images[0].DecodePixels()
+	}
+}

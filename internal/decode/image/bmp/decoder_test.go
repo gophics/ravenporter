@@ -118,6 +118,25 @@ func BenchmarkDecode(b *testing.B) {
 	}
 }
 
+func BenchmarkDecode64Bit(b *testing.B) {
+	var pixelData bytes.Buffer
+	for _, sample := range []uint16{
+		0xFFFF, 0x0000, 0x0000, 0xFFFF,
+		0x0000, 0xFFFF, 0x0000, 0xFFFF,
+		0x0000, 0x0000, 0xFFFF, 0xFFFF,
+		0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+	} {
+		writeU16LE(&pixelData, sample)
+	}
+	data := append(buildBMPHeader(2, 2, 64, 0, 0, pixelData.Bytes()), pixelData.Bytes()...)
+	dec := &bmp.Decoder{}
+	opts := detect.DecodeOptions{}
+	b.ReportAllocs()
+	for b.Loop() {
+		_, _ = dec.Decode(bytes.NewReader(data), opts)
+	}
+}
+
 func TestDecoder_Decode32bit(t *testing.T) {
 	// Build a 2x2 32-bit BMP
 	data := []byte{
@@ -194,9 +213,13 @@ func TestDecoder_DecodeErrors(t *testing.T) {
 }
 
 func buildBMPHeader(width, height int32, bpp uint16, compression uint32, colors int, pixelData []byte) []byte {
+	return buildBMPHeaderWithExtra(width, height, bpp, compression, colors, nil, pixelData)
+}
+
+func buildBMPHeaderWithExtra(width, height int32, bpp uint16, compression uint32, colors int, extraData, pixelData []byte) []byte {
 	dibSize := uint32(40)
 	palSize := colors * 4
-	pixelOff := 14 + int(dibSize) + palSize
+	pixelOff := 14 + int(dibSize) + palSize + len(extraData)
 	fileSize := pixelOff + len(pixelData)
 
 	var buf bytes.Buffer
@@ -330,12 +353,12 @@ func TestDecoder_CoreHeader(t *testing.T) {
 
 func TestDecoder_Decode16BitBitfields(t *testing.T) {
 	pixelData := []byte{0x00, 0xF8, 0x00, 0x00}
-	hdr := buildBMPHeader(1, 1, 16, 3, 0, pixelData)
 
 	var masks bytes.Buffer
 	writeU32LE(&masks, 0xF800)
 	writeU32LE(&masks, 0x07E0)
 	writeU32LE(&masks, 0x001F)
+	hdr := buildBMPHeaderWithExtra(1, 1, 16, 3, 0, masks.Bytes(), pixelData)
 
 	data := append(append([]byte{}, hdr...), masks.Bytes()...)
 	data = append(data, pixelData...)
@@ -346,6 +369,80 @@ func TestDecoder_Decode16BitBitfields(t *testing.T) {
 	require.NoError(t, decErr)
 	require.NotNil(t, pb)
 	assert.Equal(t, byte(0xFF), pb.Data[0])
+}
+
+func TestDecoder_Decode15Bit(t *testing.T) {
+	pixelData := []byte{0x00, 0x7C, 0x00, 0x00}
+	data := append(buildBMPHeader(1, 1, 15, 0, 0, pixelData), pixelData...)
+
+	scene, err := (&bmp.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, []byte{0xFF, 0x00, 0x00, 0xFF}, pb.Data[:4])
+}
+
+func TestDecoder_Decode32BitAlphaBitfields(t *testing.T) {
+	pixelData := []byte{0x11, 0x22, 0x33, 0x44}
+
+	var masks bytes.Buffer
+	writeU32LE(&masks, 0x00FF0000)
+	writeU32LE(&masks, 0x0000FF00)
+	writeU32LE(&masks, 0x000000FF)
+	writeU32LE(&masks, 0xFF000000)
+
+	hdr := buildBMPHeaderWithExtra(1, 1, 32, 6, 0, masks.Bytes(), pixelData)
+	data := append(append([]byte{}, hdr...), masks.Bytes()...)
+	data = append(data, pixelData...)
+
+	scene, err := (&bmp.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, []byte{0x33, 0x22, 0x11, 0x44}, pb.Data[:4])
+}
+
+func TestDecoder_Decode64Bit(t *testing.T) {
+	pixelData := []byte{
+		0x00, 0x00,
+		0x00, 0x80,
+		0xFF, 0xFF,
+		0x00, 0x40,
+	}
+	data := append(buildBMPHeader(1, 1, 64, 0, 0, pixelData), pixelData...)
+
+	scene, err := (&bmp.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, []byte{0xFF, 0x80, 0x00, 0x40}, pb.Data[:4])
+}
+
+func TestDecoder_Decode64BitTopDown(t *testing.T) {
+	pixelData := []byte{
+		0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF,
+	}
+	data := append(buildBMPHeader(1, -2, 64, 0, 0, pixelData), pixelData...)
+
+	scene, err := (&bmp.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	require.NoError(t, err)
+	pb, decErr := scene.Images[0].DecodePixels()
+	require.NoError(t, decErr)
+	require.NotNil(t, pb)
+	assert.Equal(t, []byte{0xFF, 0x00, 0x00, 0xFF}, pb.Data[:4])
+	assert.Equal(t, []byte{0x00, 0x00, 0xFF, 0xFF}, pb.Data[4:8])
+}
+
+func TestDecoder_Reject64BitBitfields(t *testing.T) {
+	pixelData := make([]byte, 8)
+	data := append(buildBMPHeader(1, 1, 64, 3, 0, pixelData), pixelData...)
+
+	_, err := (&bmp.Decoder{}).Decode(bytes.NewReader(data), detect.DecodeOptions{})
+	assert.Error(t, err)
 }
 
 func TestDecoder_RLE8Absolute(t *testing.T) {

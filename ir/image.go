@@ -21,6 +21,7 @@ type DataType uint8
 const (
 	DataTypeUint8 DataType = iota
 	DataTypeFloat32
+	DataTypeUint16
 )
 
 // GPUCompression identifies a GPU-native block compression scheme.

@@ -41,11 +41,6 @@ const (
 	pngFcTLMinSize = 26
 	pngFdATSeqOver = 4
 
-	metaKeyAPNG     = "APNG"
-	metaKeyDelayNum = "DelayNum"
-	metaKeyDelayDen = "DelayDen"
-	metaValTrue     = "true"
-
 	shift24 = 24
 	shift16 = 16
 	shift8  = 8
@@ -133,8 +128,8 @@ func decodeAPNG(raw []byte, baseW, baseH int) (*ir.Asset, error) {
 			ColorSpace: ir.ColorSRGB,
 			MipLevels:  1,
 			Metadata: map[string]string{
-				metaKeyDelayNum: strconv.Itoa(frame.delayNum),
-				metaKeyDelayDen: strconv.Itoa(frame.delayDen),
+				imgutil.MetaKeyDelayNum: strconv.Itoa(frame.delayNum),
+				imgutil.MetaKeyDelayDen: strconv.Itoa(frame.delayDen),
 			},
 			PixelDecode: func(_ *ir.ImageAsset) (*ir.PixelBuffer, error) {
 				return precomputed, nil

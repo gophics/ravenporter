@@ -2,6 +2,7 @@ package cache
 
 import (
 	"bytes"
+	"compress/zlib"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
@@ -16,6 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gophics/ravenporter"
+	"github.com/gophics/ravenporter/detect"
+	imagektx "github.com/gophics/ravenporter/internal/decode/image/ktx"
 	"github.com/gophics/ravenporter/ir"
 )
 
@@ -455,6 +458,69 @@ func TestWritePreservesDecodeOnlyImage(t *testing.T) {
 	assert.Equal(t, []byte{1, 2, 3, 4}, asset.Images[0].Pixels().Data)
 }
 
+func TestWritePreservesUint16ImagePixels(t *testing.T) {
+	result := &ravenporter.Result{
+		Asset: &ir.Asset{
+			Images: []*ir.ImageAsset{{
+				Name:       "psd16",
+				Format:     ir.ImagePSD,
+				Width:      1,
+				Height:     1,
+				Channels:   ir.ChannelRGBA,
+				ColorSpace: ir.ColorSRGB,
+				MipLevels:  1,
+				Compressed: []byte("psd"),
+			}},
+		},
+	}
+	result.Asset.Images[0].SetPixels(&ir.PixelBuffer{
+		Data:     []byte{0x34, 0x12, 0x78, 0x56, 0xBC, 0x9A, 0xFF, 0xEE},
+		DataType: ir.DataTypeUint16,
+		BitDepth: ir.BitDepth16,
+	})
+
+	var buf bytes.Buffer
+	require.NoError(t, Write(&buf, result, WithImagePixels(ImagePixelsIfPresent)))
+
+	asset, err := Read(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, asset.Close()) }()
+
+	pixels := asset.Images[0].Pixels()
+	require.NotNil(t, pixels)
+	assert.Equal(t, ir.DataTypeUint16, pixels.DataType)
+	assert.Equal(t, ir.BitDepth16, pixels.BitDepth)
+	assert.Equal(t, []byte{0x34, 0x12, 0x78, 0x56, 0xBC, 0x9A, 0xFF, 0xEE}, pixels.Data)
+}
+
+func TestWritePreservesRewrittenKTX2Bytes(t *testing.T) {
+	originalLevel := []byte{1, 2, 3, 4}
+	scene, err := (&imagektx.Decoder{}).Decode(
+		bytes.NewReader(buildKTX2ZlibForCache(originalLevel)),
+		detect.DecodeOptions{},
+	)
+	require.NoError(t, err)
+	require.Len(t, scene.Images, 1)
+
+	rewritten, err := scene.Images[0].CompressedBytes()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(rewritten), 104)
+	assert.Equal(t, uint32(0), binary.LittleEndian.Uint32(rewritten[44:48]))
+
+	result := &ravenporter.Result{Asset: &ir.Asset{Images: scene.Images}}
+
+	var buf bytes.Buffer
+	require.NoError(t, Write(&buf, result))
+
+	asset, err := Read(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, asset.Close()) }()
+
+	cached, err := asset.Images[0].CompressedBytes()
+	require.NoError(t, err)
+	assert.Equal(t, rewritten, cached)
+}
+
 func TestWriteRejectsEmbeddedMediaOverLimit(t *testing.T) {
 	result := &ravenporter.Result{
 		Asset:  fullScene(),
@@ -800,4 +866,34 @@ func onePixelPNG() []byte {
 		0x3D, 0x1D, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
 		0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 	}
+}
+
+func buildKTX2ZlibForCache(level []byte) []byte {
+	const (
+		headerSize     = 80
+		levelEntrySize = 24
+	)
+	payload := compressZlibBytes(level)
+	data := make([]byte, headerSize+levelEntrySize+len(payload))
+	copy(data[0:], "\xAB\x4B\x54\x58\x20\x32\x30\xBB\x0D\x0A\x1A\x0A")
+	binary.LittleEndian.PutUint32(data[12:], 157)
+	binary.LittleEndian.PutUint32(data[20:], 32)
+	binary.LittleEndian.PutUint32(data[24:], 16)
+	binary.LittleEndian.PutUint32(data[36:], 1)
+	binary.LittleEndian.PutUint32(data[40:], 1)
+	binary.LittleEndian.PutUint32(data[44:], 3)
+	levelOffset := headerSize + levelEntrySize
+	binary.LittleEndian.PutUint64(data[80:], uint64(levelOffset))
+	binary.LittleEndian.PutUint64(data[88:], uint64(len(payload)))
+	binary.LittleEndian.PutUint64(data[96:], uint64(len(level)))
+	copy(data[levelOffset:], payload)
+	return data
+}
+
+func compressZlibBytes(data []byte) []byte {
+	var buf bytes.Buffer
+	writer := zlib.NewWriter(&buf)
+	_, _ = writer.Write(data)
+	_ = writer.Close()
+	return buf.Bytes()
 }

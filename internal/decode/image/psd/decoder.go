@@ -1,17 +1,17 @@
 package psd
 
 import (
-	"bytes"
-	"compress/zlib"
 	"encoding/binary"
 	"errors"
 	"io"
 	"math"
 	"strconv"
+	"unsafe"
 
 	"github.com/gophics/ravenporter/detect"
 	"github.com/gophics/ravenporter/internal/binread"
 	"github.com/gophics/ravenporter/internal/imgutil"
+	"github.com/gophics/ravenporter/internal/pool"
 	"github.com/gophics/ravenporter/ir"
 )
 
@@ -48,22 +48,63 @@ const (
 	psdVersionPSD = 1
 	psdVersionPSB = 2
 
-	psdModeGrayscale = 1
-	psdModeRGB       = 3
-	psdModeCMYK      = 4
+	psdModeBitmap       = 0
+	psdModeGrayscale    = 1
+	psdModeIndexed      = 2
+	psdModeRGB          = 3
+	psdModeCMYK         = 4
+	psdModeMultichannel = 7
+	psdModeDuotone      = 8
+	psdModeLab          = 9
 
 	psdOutChannels = 4
 
+	psdDepth1  = 1
 	psdDepth8  = 8
 	psdDepth16 = 16
 	psdDepth32 = 32
 
-	psdBitsPerByte   = 8
-	psdMaxByte       = 255
-	psdMaxUint16     = 65535.0
-	psdRoundingBias  = 0.5
-	psdMinRGBSamples = 3
-	psdCMYKChannels  = 4
+	psdBitsPerByte      = 8
+	psdBitmapHighBit    = 7
+	psdMaxByte          = 255
+	psdMaxUint16        = 65535.0
+	psdUint16Bytes      = 2
+	psdFloat32Bytes     = 4
+	psdByteToUint16     = 0x101
+	psdRoundingBias     = 0.5
+	psdMinRGBSamples    = 3
+	psdCMYKChannels     = 4
+	psdThirdSample      = 2
+	psdIndexedColors    = 256
+	psdIndexedTableSize = psdIndexedColors * 3
+
+	psdLabScaleL     = 100.0
+	psdLabOffsetL    = 16.0
+	psdLabDivisor    = 116.0
+	psdLabScaleA     = 500.0
+	psdLabScaleB     = 200.0
+	psdLabByteScale  = 255.0
+	psdLabByteCenter = 128.0
+	psdLabRefX       = 0.96422
+	psdLabRefZ       = 0.82521
+	psdLabEpsilon    = 216.0 / 24389.0
+	psdLabKappa      = 24389.0 / 27.0
+
+	psdLabRGBM00 = 3.1338561
+	psdLabRGBM01 = -1.6168667
+	psdLabRGBM02 = -0.4906146
+	psdLabRGBM10 = -0.9787684
+	psdLabRGBM11 = 1.9161415
+	psdLabRGBM12 = 0.0334540
+	psdLabRGBM20 = 0.0719453
+	psdLabRGBM21 = -0.2289914
+	psdLabRGBM22 = 1.4052427
+
+	psdSRGBThreshold   = 0.0031308
+	psdSRGBLinearScale = 12.92
+	psdSRGBGammaScale  = 1.055
+	psdSRGBGammaBias   = 0.055
+	psdSRGBGammaPower  = 2.4
 
 	metaBitDepth  = "BitDepth"
 	metaColorMode = "ColorMode"
@@ -73,6 +114,7 @@ const (
 var (
 	errPSDImageDataTruncated = errors.New("psd: image data section truncated")
 	errPSDUnsupportedComp    = errors.New("psd: unsupported compression type")
+	errPSDUnsupportedMode    = errors.New("psd: unsupported color mode")
 )
 
 type Decoder struct{}
@@ -241,12 +283,15 @@ func readPSDCompositePixels(data []byte, w, h int) (*ir.PixelBuffer, error) {
 	channels := psdChannelCount(data)
 	depth, mode := psdDepthAndMode(data)
 	version := psdVersion(data)
-	if channels < 1 || w < 1 || h < 1 || depth < psdBitsPerByte {
+	if channels < 1 || w < 1 || h < 1 || depth < psdDepth1 {
 		return nil, errPSDImageDataTruncated
 	}
+	if err := validatePSDComposite(depth, mode, channels, psdColorModeData(data)); err != nil {
+		return nil, err
+	}
+	colorModeData := psdColorModeData(data)
 
-	bytesPerSample := depth / psdBitsPerByte
-	rowBytes := w * bytesPerSample
+	rowBytes := psdRowBytes(w, depth)
 
 	pos := psdImageDataOffset(data)
 	if pos < 0 || pos+2 > len(data) {
@@ -262,23 +307,80 @@ func readPSDCompositePixels(data []byte, w, h int) (*ir.PixelBuffer, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer pool.PutBuffer(planar)
 
-	rgba := planarToRGBA(planar, w, h, channels, depth, mode, bytesPerSample)
+	if depth == psdDepth16 {
+		return &ir.PixelBuffer{
+			Data:     planarToRGBA16(planar, colorModeData, w, h, channels, mode, rowBytes),
+			DataType: ir.DataTypeUint16,
+			BitDepth: ir.BitDepth16,
+		}, nil
+	}
+	if depth == psdDepth32 {
+		return &ir.PixelBuffer{
+			Data:     planarToRGBA32(planar, colorModeData, w, h, channels, mode, rowBytes),
+			DataType: ir.DataTypeFloat32,
+			BitDepth: ir.BitDepth32,
+		}, nil
+	}
 
 	return &ir.PixelBuffer{
-		Data:     rgba,
+		Data:     planarToRGBA8(planar, colorModeData, w, h, channels, depth, mode, rowBytes),
 		DataType: ir.DataTypeUint8,
 		BitDepth: ir.BitDepth8,
 	}, nil
 }
 
+func psdColorModeData(data []byte) []byte {
+	pos := psdHeaderSize
+	if pos+psdBlockLenSize > len(data) {
+		return nil
+	}
+	length := int(binread.ReadU32BE(data[pos:]))
+	pos += psdBlockLenSize
+	if pos+length > len(data) {
+		return nil
+	}
+	return data[pos : pos+length]
+}
+
+func psdRowBytes(width, depth int) int {
+	if depth == psdDepth1 {
+		return (width + psdBitsPerByte - 1) / psdBitsPerByte
+	}
+	return width * (depth / psdBitsPerByte)
+}
+
+func validatePSDComposite(depth, mode, channels int, colorModeData []byte) error {
+	switch mode {
+	case psdModeBitmap:
+		if depth != psdDepth1 {
+			return errPSDUnsupportedMode
+		}
+	case psdModeIndexed:
+		if depth != psdDepth8 || len(colorModeData) < psdIndexedTableSize {
+			return errPSDUnsupportedMode
+		}
+	case psdModeLab:
+		if channels < psdMinRGBSamples || depth == psdDepth1 {
+			return errPSDUnsupportedMode
+		}
+	default:
+		if depth == psdDepth1 {
+			return errPSDUnsupportedMode
+		}
+	}
+	return nil
+}
+
 func decompressPlanar(data []byte, comp, totalScanlines, rowBytes, rowLenSize int) ([]byte, error) {
 	totalSize := totalScanlines * rowBytes
-	planar := make([]byte, totalSize)
+	planar := pool.GetBuffer(totalSize)
 
 	switch comp {
 	case psdCompRaw:
 		if len(data) < totalSize {
+			pool.PutBuffer(planar)
 			return nil, errPSDImageDataTruncated
 		}
 		copy(planar, data[:totalSize])
@@ -286,22 +388,19 @@ func decompressPlanar(data []byte, comp, totalScanlines, rowBytes, rowLenSize in
 	case psdCompRLE:
 		rowTableSize := totalScanlines * rowLenSize
 		if len(data) < rowTableSize {
+			pool.PutBuffer(planar)
 			return nil, errPSDImageDataTruncated
-		}
-		rowLengths := make([]int, totalScanlines)
-		for i := range totalScanlines {
-			off := i * rowLenSize
-			if rowLenSize == psdRowLenSize {
-				rowLengths[i] = int(binread.ReadU16BE(data[off:]))
-			} else {
-				rowLengths[i] = int(binread.ReadU32BE(data[off:]))
-			}
 		}
 		pos := rowTableSize
 		dst := 0
 		for i := range totalScanlines {
-			rl := rowLengths[i]
+			off := i * rowLenSize
+			rl := int(binread.ReadU16BE(data[off:]))
+			if rowLenSize != psdRowLenSize {
+				rl = int(binread.ReadU32BE(data[off:]))
+			}
 			if pos+rl > len(data) || dst+rowBytes > totalSize {
+				pool.PutBuffer(planar)
 				return nil, errPSDImageDataTruncated
 			}
 			packbitsDecodeScanline(data[pos:pos+rl], planar[dst:dst+rowBytes])
@@ -310,13 +409,8 @@ func decompressPlanar(data []byte, comp, totalScanlines, rowBytes, rowLenSize in
 		}
 
 	case psdCompZIP, psdCompZIPPred:
-		r, err := zlib.NewReader(bytes.NewReader(data))
-		if err != nil {
-			return nil, errPSDImageDataTruncated
-		}
-		n, err := io.ReadFull(r, planar)
-		_ = r.Close() //nolint:errcheck // best-effort cleanup of decompressor
-		if err != nil || n < totalSize {
+		if err := psdZlibReader.DecompressInto(planar, data); err != nil {
+			pool.PutBuffer(planar)
 			return nil, errPSDImageDataTruncated
 		}
 		if comp == psdCompZIPPred {
@@ -324,11 +418,14 @@ func decompressPlanar(data []byte, comp, totalScanlines, rowBytes, rowLenSize in
 		}
 
 	default:
+		pool.PutBuffer(planar)
 		return nil, errPSDUnsupportedComp
 	}
 
 	return planar, nil
 }
+
+var psdZlibReader pool.ZlibReader
 
 func psdVersion(data []byte) int {
 	if len(data) < psdVersionOff+2 {
@@ -373,84 +470,288 @@ func undoPrediction(planar []byte, rowBytes int) {
 	}
 }
 
-func planarToRGBA(planar []byte, w, h, channels, depth, mode, bytesPerSample int) []byte {
-	planeSize := w * h * bytesPerSample
+func planarToRGBA8(planar, colorModeData []byte, w, h, channels, depth, mode, rowBytes int) []byte {
+	planeSize := rowBytes * h
+	bytesPerSample := 0
+	if depth >= psdBitsPerByte {
+		bytesPerSample = depth / psdBitsPerByte
+	}
+
 	rgba := make([]byte, w*h*psdOutChannels)
-	samples := make([]float64, channels)
+	var local [psdOutChannels]float64
+	samples := local[:]
+	if channels > len(local) {
+		samples = make([]float64, channels)
+	} else {
+		samples = samples[:channels]
+	}
 
 	for y := range h {
 		for x := range w {
 			idx := y*w + x
 			out := idx * psdOutChannels
-			readSamples(samples, planar, channels, planeSize, idx, bytesPerSample, depth)
-			r, g, b, a := convertToRGBA(samples, mode, channels)
-			rgba[out] = r
-			rgba[out+1] = g
-			rgba[out+2] = b
-			rgba[out+3] = a
+
+			switch mode {
+			case psdModeBitmap:
+				v := bitmapSample(planar, rowBytes, x, y)
+				rgba[out] = v
+				rgba[out+1] = v
+				rgba[out+2] = v
+				rgba[out+3] = 0xFF
+			case psdModeIndexed:
+				r, g, b := indexedSample(planar, colorModeData, planeSize, idx)
+				rgba[out] = r
+				rgba[out+1] = g
+				rgba[out+2] = b
+				rgba[out+3] = 0xFF
+				if channels > 1 {
+					rgba[out+3] = clampByte(readSample(planar, planeSize, idx, bytesPerSample, depth, 1))
+				}
+			default:
+				readSamples(samples, planar, channels, planeSize, idx, bytesPerSample, depth)
+				r, g, b, a := convertToRGBA(samples, mode, channels)
+				rgba[out] = r
+				rgba[out+1] = g
+				rgba[out+2] = b
+				rgba[out+3] = a
+			}
 		}
 	}
 
 	return rgba
 }
 
+func planarToRGBA16(planar, colorModeData []byte, w, h, channels, mode, rowBytes int) []byte {
+	planeSize := rowBytes * h
+	rgba := make([]byte, w*h*psdOutChannels*psdUint16Bytes)
+	var local [psdOutChannels]float64
+	samples := local[:]
+	if channels > len(local) {
+		samples = make([]float64, channels)
+	} else {
+		samples = samples[:channels]
+	}
+
+	for y := range h {
+		for x := range w {
+			idx := y*w + x
+			out := idx * psdOutChannels * psdUint16Bytes
+
+			switch mode {
+			case psdModeIndexed:
+				r8, g8, b8 := indexedSample(planar, colorModeData, planeSize, idx)
+				binary.LittleEndian.PutUint16(rgba[out:], uint16(r8)*psdByteToUint16)
+				binary.LittleEndian.PutUint16(rgba[out+2:], uint16(g8)*psdByteToUint16)
+				binary.LittleEndian.PutUint16(rgba[out+4:], uint16(b8)*psdByteToUint16)
+				alpha := uint16(psdMaxUint16)
+				if channels > 1 {
+					alpha = clampUint16(readSample(planar, planeSize, idx, psdUint16Bytes, psdDepth16, 1))
+				}
+				binary.LittleEndian.PutUint16(rgba[out+6:], alpha)
+			default:
+				readSamples(samples, planar, channels, planeSize, idx, psdUint16Bytes, psdDepth16)
+				r, g, b, a := convertToRGBA16(samples, mode, channels)
+				binary.LittleEndian.PutUint16(rgba[out:], r)
+				binary.LittleEndian.PutUint16(rgba[out+2:], g)
+				binary.LittleEndian.PutUint16(rgba[out+4:], b)
+				binary.LittleEndian.PutUint16(rgba[out+6:], a)
+			}
+		}
+	}
+
+	return rgba
+}
+
+func planarToRGBA32(planar, colorModeData []byte, w, h, channels, mode, rowBytes int) []byte {
+	planeSize := rowBytes * h
+	rgba := make([]float32, w*h*psdOutChannels)
+	var local [psdOutChannels]float64
+	samples := local[:]
+	if channels > len(local) {
+		samples = make([]float64, channels)
+	} else {
+		samples = samples[:channels]
+	}
+
+	for y := range h {
+		for x := range w {
+			idx := y*w + x
+			out := idx * psdOutChannels
+
+			switch mode {
+			case psdModeBitmap:
+				v := bitmapSample(planar, rowBytes, x, y)
+				value := float32(v) / psdMaxByte
+				rgba[out] = value
+				rgba[out+1] = value
+				rgba[out+2] = value
+				rgba[out+3] = 1
+			case psdModeIndexed:
+				r8, g8, b8 := indexedSample(planar, colorModeData, planeSize, idx)
+				rgba[out] = float32(r8) / psdMaxByte
+				rgba[out+1] = float32(g8) / psdMaxByte
+				rgba[out+2] = float32(b8) / psdMaxByte
+				rgba[out+3] = 1
+				if channels > 1 {
+					rgba[out+3] = clampUnit32(readSample(planar, planeSize, idx, psdFloat32Bytes, psdDepth32, 1))
+				}
+			default:
+				readSamples(samples, planar, channels, planeSize, idx, psdFloat32Bytes, psdDepth32)
+				r, g, b, a := convertToRGBA32(samples, mode, channels)
+				rgba[out] = r
+				rgba[out+1] = g
+				rgba[out+2] = b
+				rgba[out+3] = a
+			}
+		}
+	}
+
+	return unsafe.Slice((*byte)(unsafe.Pointer(&rgba[0])), len(rgba)*4) //nolint:gosec,mnd
+}
+
+func bitmapSample(planar []byte, rowBytes, x, y int) byte {
+	off := y*rowBytes + x/psdBitsPerByte
+	if off >= len(planar) {
+		return 0
+	}
+	shift := psdBitmapHighBit - (x % psdBitsPerByte)
+	if (planar[off]>>shift)&1 == 0 {
+		return 0
+	}
+	return psdMaxByte
+}
+
+func indexedSample(planar, colorModeData []byte, planeSize, pixelIdx int) (r, g, b byte) {
+	if pixelIdx >= planeSize || len(colorModeData) < psdIndexedTableSize {
+		return 0, 0, 0
+	}
+	index := int(planar[pixelIdx])
+	return colorModeData[index], colorModeData[psdIndexedColors+index], colorModeData[psdIndexedColors*2+index]
+}
+
 func readSamples(vals []float64, planar []byte, channels, planeSize, pixelIdx, bytesPerSample, depth int) {
 	for c := range channels {
-		off := c*planeSize + pixelIdx*bytesPerSample
-		if off+bytesPerSample > len(planar) {
-			vals[c] = 0
-			continue
-		}
-		switch depth {
-		case psdDepth8:
-			vals[c] = float64(planar[off]) / psdMaxByte
-		case psdDepth16:
-			vals[c] = float64(binary.BigEndian.Uint16(planar[off:])) / psdMaxUint16
-		case psdDepth32:
-			vals[c] = float64(math.Float32frombits(binary.BigEndian.Uint32(planar[off:])))
-		default:
-			vals[c] = 0
-		}
+		vals[c] = readSample(planar, planeSize, pixelIdx, bytesPerSample, depth, c)
+	}
+}
+
+func readSample(planar []byte, planeSize, pixelIdx, bytesPerSample, depth, channel int) float64 {
+	off := channel*planeSize + pixelIdx*bytesPerSample
+	if off+bytesPerSample > len(planar) {
+		return 0
+	}
+	switch depth {
+	case psdDepth8:
+		return float64(planar[off]) / psdMaxByte
+	case psdDepth16:
+		return float64(binary.BigEndian.Uint16(planar[off:])) / psdMaxUint16
+	case psdDepth32:
+		return float64(math.Float32frombits(binary.BigEndian.Uint32(planar[off:])))
+	default:
+		return 0
 	}
 }
 
 func convertToRGBA(samples []float64, mode, channels int) (r, g, b, a byte) {
-	a = 0xFF
+	rf, gf, bf, af := convertToNormalizedRGBA(samples, mode, channels)
+	return clampByte(rf), clampByte(gf), clampByte(bf), clampByte(af)
+}
+
+func convertToRGBA16(samples []float64, mode, channels int) (r, g, b, a uint16) {
+	rf, gf, bf, af := convertToNormalizedRGBA(samples, mode, channels)
+	return clampUint16(rf), clampUint16(gf), clampUint16(bf), clampUint16(af)
+}
+
+func convertToRGBA32(samples []float64, mode, channels int) (r, g, b, a float32) {
+	rf, gf, bf, af := convertToNormalizedRGBA(samples, mode, channels)
+	return float32(rf), float32(gf), float32(bf), float32(af)
+}
+
+func convertToNormalizedRGBA(samples []float64, mode, channels int) (r, g, b, a float64) {
+	a = 1
 
 	switch mode {
-	case psdModeGrayscale:
-		v := clampByte(samples[0])
+	case psdModeGrayscale, psdModeDuotone:
+		v := clampUnit(samples[0])
 		r, g, b = v, v, v
 		if channels > 1 {
-			a = clampByte(samples[1])
+			a = clampUnit(samples[1])
 		}
-
 	case psdModeCMYK:
-		c := samples[0]
-		m := samples[1]
-		y := samples[2]
-		k := samples[3]
-		r = clampByte((1 - c) * (1 - k))
-		g = clampByte((1 - m) * (1 - k))
-		b = clampByte((1 - y) * (1 - k))
+		r, g, b = cmykToRGBUnit(samples[0], samples[1], samples[2], samples[3])
 		if channels > psdCMYKChannels {
-			a = clampByte(samples[psdCMYKChannels])
+			a = clampUnit(samples[psdCMYKChannels])
 		}
-
+	case psdModeLab:
+		r, g, b = labToRGBUnit(samples[0], samples[1], samples[2])
+		if channels > psdMinRGBSamples {
+			a = clampUnit(samples[psdMinRGBSamples])
+		}
+	case psdModeMultichannel:
+		r, g, b = multichannelToRGBUnit(samples, channels)
 	default:
-		r = clampByte(samples[0])
-		if len(samples) > 1 {
-			g = clampByte(samples[1])
+		r = clampUnit(samples[0])
+		if channels > 1 {
+			g = clampUnit(samples[1])
 		}
-		if len(samples) > psdMinRGBSamples-1 {
-			b = clampByte(samples[2])
+		if channels > psdMinRGBSamples-1 {
+			b = clampUnit(samples[2])
 		}
 		if channels >= psdOutChannels {
-			a = clampByte(samples[3])
+			a = clampUnit(samples[3])
 		}
 	}
 
 	return r, g, b, a
+}
+
+func cmykToRGBUnit(c, m, y, k float64) (r, g, b float64) {
+	return clampUnit((1 - c) * (1 - k)),
+		clampUnit((1 - m) * (1 - k)),
+		clampUnit((1 - y) * (1 - k))
+}
+
+func multichannelToRGBUnit(samples []float64, channels int) (r, g, b float64) {
+	switch {
+	case channels <= 1:
+		v := clampUnit(1 - samples[0])
+		return v, v, v
+	case channels >= psdCMYKChannels:
+		return cmykToRGBUnit(samples[0], samples[1], samples[2], samples[3])
+	default:
+		c := samples[0]
+		m := samples[1]
+		y := 0.0
+		if channels > psdThirdSample {
+			y = samples[psdThirdSample]
+		}
+		return clampUnit(1 - c), clampUnit(1 - m), clampUnit(1 - y)
+	}
+}
+
+func labToRGBUnit(l, a, b float64) (r, g, bl float64) {
+	lf := l*psdLabScaleL + psdLabOffsetL
+	fy := lf / psdLabDivisor
+	fx := fy + ((a*psdLabByteScale)-psdLabByteCenter)/psdLabScaleA
+	fz := fy - ((b*psdLabByteScale)-psdLabByteCenter)/psdLabScaleB
+
+	x := labPivotInverse(fx) * psdLabRefX
+	y := labPivotInverse(fy)
+	z := labPivotInverse(fz) * psdLabRefZ
+
+	rr := psdLabRGBM00*x + psdLabRGBM01*y + psdLabRGBM02*z
+	gg := psdLabRGBM10*x + psdLabRGBM11*y + psdLabRGBM12*z
+	bb := psdLabRGBM20*x + psdLabRGBM21*y + psdLabRGBM22*z
+
+	return gammaEncodeUnit(rr), gammaEncodeUnit(gg), gammaEncodeUnit(bb)
+}
+
+func labPivotInverse(v float64) float64 {
+	cube := v * v * v
+	if cube > psdLabEpsilon {
+		return cube
+	}
+	return (psdLabDivisor*v - psdLabOffsetL) / psdLabKappa
 }
 
 func clampByte(v float64) byte {
@@ -461,6 +762,43 @@ func clampByte(v float64) byte {
 		return psdMaxByte
 	}
 	return byte(v*psdMaxByte + psdRoundingBias)
+}
+
+func clampUint16(v float64) uint16 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return uint16(psdMaxUint16)
+	}
+	return uint16(v*psdMaxUint16 + psdRoundingBias)
+}
+
+func gammaEncodeUnit(v float64) float64 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return 1
+	}
+	if v <= psdSRGBThreshold {
+		return clampUnit(psdSRGBLinearScale * v)
+	}
+	return clampUnit(psdSRGBGammaScale*math.Pow(v, 1.0/psdSRGBGammaPower) - psdSRGBGammaBias)
+}
+
+func clampUnit32(v float64) float32 {
+	return float32(clampUnit(v))
+}
+
+func clampUnit(v float64) float64 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 1 {
+		return 1
+	}
+	return v
 }
 
 func packbitsDecodeScanline(src, dst []byte) {
