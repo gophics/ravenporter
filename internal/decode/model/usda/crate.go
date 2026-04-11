@@ -133,6 +133,12 @@ const (
 	tokUnit        = "metersPerUnit"
 	tokDefPrim     = "defaultPrim"
 	tokVariantSets = "variantSets"
+	tokSubLayers   = "subLayers"
+	tokReferences  = "references"
+	tokPayload     = "payload"
+	tokInherits    = "inherits"
+	tokSpecializes = "specializes"
+	tokTimeSamples = "points.timeSamples"
 
 	tokShader      = "Shader"
 	tokInfoID      = "info:id"
@@ -467,6 +473,14 @@ func (cr *crateReader) readInlineToken(vr uint64) string {
 	return cr.tokenName(idx)
 }
 
+func (cr *crateReader) readInlineString(vr uint64) string {
+	idx := int32((vr >> valueRepPayShift) & valueRepPayMask) //nolint:gosec // intentional truncation
+	if idx >= 0 && int(idx) < len(cr.strings) {
+		return cr.strings[idx]
+	}
+	return ""
+}
+
 func (cr *crateReader) readInlineBool(vr uint64) bool {
 	return (vr>>valueRepPayShift)&1 != 0
 }
@@ -689,4 +703,52 @@ func (cr *crateReader) readTokenArray(vr uint64) []string {
 		result[i] = cr.tokenName(idx)
 	}
 	return result
+}
+
+func (cr *crateReader) readStringArray(vr uint64) []string {
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	if offset <= 0 || offset+crateU64Size > len(cr.data) {
+		return nil
+	}
+	count := int(binread.ReadU64LE(cr.data[offset:])) //nolint:gosec // bounded
+	start := offset + crateU64Size
+	if start+count*crateU32Size > len(cr.data) {
+		return nil
+	}
+	result := make([]string, count)
+	for i := range count {
+		idx := binread.ReadI32LE(cr.data[start+i*crateU32Size:])
+		if idx >= 0 && int(idx) < len(cr.strings) {
+			result[i] = cr.strings[idx]
+		}
+	}
+	return result
+}
+
+func (cr *crateReader) readTimeSampledVec3(vr uint64) (times []float32, frames [][][3]float32) {
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	if offset <= 0 || offset+crateU64Size > len(cr.data) {
+		return nil, nil
+	}
+	count := int(binread.ReadU64LE(cr.data[offset:])) //nolint:gosec // bounded
+	start := offset + crateU64Size
+	if start+count*(crateF64Size+crateU64Size) > len(cr.data) {
+		return nil, nil
+	}
+	times = make([]float32, 0, count)
+	frames = make([][][3]float32, 0, count)
+	for i := range count {
+		entryOff := start + i*(crateF64Size+crateU64Size)
+		frameVR := binread.ReadU64LE(cr.data[entryOff+crateF64Size:])
+		frame := cr.readVec3fArray(frameVR)
+		if frame == nil {
+			frame = cr.readVec3dArray(frameVR)
+		}
+		if frame == nil {
+			return nil, nil
+		}
+		times = append(times, float32(binread.ReadF64LE(cr.data[entryOff:])))
+		frames = append(frames, frame)
+	}
+	return times, frames
 }

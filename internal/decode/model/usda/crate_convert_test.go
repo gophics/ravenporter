@@ -1,6 +1,7 @@
 package usda
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/binary"
 	"math"
@@ -40,6 +41,10 @@ func makeInlineBoolVR(v bool) uint64 {
 	return 0
 }
 
+func makeInlineStringVR(idx int32) uint64 {
+	return uint64(idx) << valueRepPayShift
+}
+
 func field(cr *crateReader, name string, vr uint64) crateField {
 	for i, t := range cr.tokens {
 		if t == name {
@@ -77,6 +82,19 @@ func writeIntArrayVR(cr *crateReader, off int, vals []int32) uint64 {
 	binary.LittleEndian.PutUint64(cr.data[off:], uint64(len(vals)))
 	for i, v := range vals {
 		binary.LittleEndian.PutUint32(cr.data[off+8+i*4:], uint32(v))
+	}
+	return uint64(off) << valueRepPayShift
+}
+
+func writeTimeSampledVec3VR(cr *crateReader, off int, times []float64, frames [][][3]float32) uint64 {
+	binary.LittleEndian.PutUint64(cr.data[off:], uint64(len(times)))
+	entryOff := off + 8
+	frameOff := entryOff + len(times)*16
+	for i := range times {
+		binary.LittleEndian.PutUint64(cr.data[entryOff+i*16:], math.Float64bits(times[i]))
+		frameVR := writeVec3fVR(cr, frameOff, frames[i])
+		binary.LittleEndian.PutUint64(cr.data[entryOff+i*16+8:], frameVR)
+		frameOff += 8 + len(frames[i])*12
 	}
 	return uint64(off) << valueRepPayShift
 }
@@ -412,6 +430,121 @@ func TestConvertCrateMesh_OpacityOnly(t *testing.T) {
 	require.Len(t, prim.Data.Colors0, 3)
 	assert.InDelta(t, float32(1), prim.Data.Colors0[0][0], 0.01)   // white
 	assert.InDelta(t, float32(0.8), prim.Data.Colors0[0][3], 0.01) // opacity
+}
+
+func TestConvertCrateMesh_TimeSamples(t *testing.T) {
+	cr := buildFakeCrate([]string{tokTimeSamples, tokFaceIdx})
+	asset := &ir.Asset{}
+
+	pointsVR := writeTimeSampledVec3VR(cr, 100, []float64{0, 1}, [][][3]float32{
+		{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}},
+		{{0.1, 0, 0}, {1.1, 0, 0}, {0.1, 1, 0}},
+	})
+
+	idxOff := 400
+	binary.LittleEndian.PutUint64(cr.data[idxOff:], 3)
+	for i, v := range []uint32{0, 1, 2} {
+		binary.LittleEndian.PutUint32(cr.data[idxOff+8+i*4:], v)
+	}
+	idxVR := uint64(idxOff) << valueRepPayShift
+
+	fields := []crateField{
+		field(cr, tokTimeSamples, pointsVR),
+		field(cr, tokFaceIdx, idxVR),
+	}
+
+	convertCrateMesh(cr, fields, "AnimatedMesh", asset)
+
+	require.Len(t, asset.Meshes, 1)
+	prim := asset.Meshes[0].Primitives[0]
+	require.Len(t, prim.Data.Positions, 3)
+	require.Len(t, prim.MorphTargets, 1)
+	assert.Equal(t, "frame_1", prim.MorphTargets[0].Name)
+	assert.InDelta(t, float32(0.1), prim.MorphTargets[0].Positions[0][0], 0.001)
+}
+
+func BenchmarkConvertCrateMesh_TimeSamples(b *testing.B) {
+	cr := buildFakeCrate([]string{tokTimeSamples, tokFaceIdx})
+	pointsVR := writeTimeSampledVec3VR(cr, 100, []float64{0, 1}, [][][3]float32{
+		{{0, 0, 0}, {1, 0, 0}, {0, 1, 0}},
+		{{0.1, 0, 0}, {1.1, 0, 0}, {0.1, 1, 0}},
+	})
+	idxOff := 400
+	binary.LittleEndian.PutUint64(cr.data[idxOff:], 3)
+	for i, v := range []uint32{0, 1, 2} {
+		binary.LittleEndian.PutUint32(cr.data[idxOff+8+i*4:], v)
+	}
+	idxVR := uint64(idxOff) << valueRepPayShift
+	fields := []crateField{
+		field(cr, tokTimeSamples, pointsVR),
+		field(cr, tokFaceIdx, idxVR),
+	}
+
+	b.ReportAllocs()
+	for b.Loop() {
+		asset := &ir.Asset{}
+		convertCrateMesh(cr, fields, "AnimatedMesh", asset)
+	}
+}
+
+type recordingReporter struct {
+	deps []struct {
+		kind, path, relation, reportedBy string
+	}
+}
+
+func (r *recordingReporter) AddDependency(kind, path, relation, reportedBy string) {
+	r.deps = append(r.deps, struct {
+		kind, path, relation, reportedBy string
+	}{kind: kind, path: path, relation: relation, reportedBy: reportedBy})
+}
+
+func (*recordingReporter) AddProvenanceNote(string, string) {}
+
+func TestResolveCrateExternalRefs(t *testing.T) {
+	refMesh := "#usda 1.0\n\n" +
+		"def Mesh \"RefBox\" {\n" +
+		"    point3f[] points = [(0,0,0),(1,0,0),(0,1,0)]\n" +
+		"    int[] faceVertexIndices = [0,1,2]\n" +
+		"}\n"
+	var archive bytes.Buffer
+	zw := zip.NewWriter(&archive)
+	w, err := zw.Create("ref.usda")
+	require.NoError(t, err)
+	_, err = w.Write([]byte(refMesh))
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+
+	zr, err := zip.NewReader(bytes.NewReader(archive.Bytes()), int64(archive.Len()))
+	require.NoError(t, err)
+
+	reporter := &recordingReporter{}
+	cr := buildFakeCrate([]string{tokReferences})
+	cr.strings = []string{"@./ref.usda@</Model>"}
+	fields := []crateField{{tokenIdx: 0, valueRep: makeInlineStringVR(0)}}
+	asset := ir.NewAsset(ir.FormatUSD)
+
+	err = resolveCrateExternalRefs(cr, crateDecodeContext{
+		archive:     zr.File,
+		maxFileSize: 1 << 20,
+		reporter:    reporter,
+	}, asset, fields, tokReferences, "reference")
+	require.NoError(t, err)
+	require.Len(t, reporter.deps, 1)
+	assert.Equal(t, "ref.usda", reporter.deps[0].path)
+	require.Len(t, asset.Meshes, 1)
+	assert.Equal(t, "RefBox", asset.Meshes[0].Name)
+}
+
+func TestResolveInheritedNodes(t *testing.T) {
+	asset := &ir.Asset{
+		Nodes: []ir.Node{
+			{Name: "Base", MeshIndex: 2, SkinIndex: ir.NoIndex, CameraIndex: ir.NoIndex, LightIndex: ir.NoIndex},
+			{Name: "Derived", MeshIndex: ir.NoIndex, SkinIndex: ir.NoIndex, CameraIndex: ir.NoIndex, LightIndex: ir.NoIndex},
+		},
+	}
+	resolveInheritedNodes(asset, []inheritArc{{nodeIdx: 1, basePath: "Base"}})
+	assert.Equal(t, 2, asset.Nodes[1].MeshIndex)
 }
 
 func TestMergeRefScene(t *testing.T) {

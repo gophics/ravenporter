@@ -1,17 +1,26 @@
 package usda
 
 import (
+	"archive/zip"
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 
+	"github.com/gophics/ravenporter/detect"
 	"github.com/gophics/ravenporter/internal/decutil"
 	"github.com/gophics/ravenporter/internal/mathx"
 	"github.com/gophics/ravenporter/ir"
 )
 
+type crateDecodeContext struct {
+	archive     []*zip.File
+	maxFileSize int64
+	reporter    detect.DecodeReporter
+}
+
 //nolint:funlen,gocyclo // crate conversion handles all spec types inline
-func decodeCrateToScene(data []byte) (*ir.Asset, error) {
+func decodeCrateToSceneWithContext(data []byte, ctx crateDecodeContext) (*ir.Asset, error) {
 	cr, err := parseCrate(data)
 	if err != nil {
 		return nil, decutil.DecodeErr(ir.FormatUSD, "crate parse failed", err)
@@ -28,9 +37,10 @@ func decodeCrateToScene(data []byte) (*ir.Asset, error) {
 	var shaders []deferredShader
 	var gsubsets []deferredGeomSubset
 	var bshapes []deferredBlendShape
+	var assetInherits []inheritArc
 
 	for _, spec := range cr.specs {
-		if spec.specType != specTypePseudoRoot {
+		if !isCrateRootSpec(cr, spec) {
 			continue
 		}
 		fields := cr.specFields(spec)
@@ -53,6 +63,9 @@ func decodeCrateToScene(data []byte) (*ir.Asset, error) {
 				}
 				asset.Metadata.ExtraProperties["variantSets"] = strings.Join(tokens, ",")
 			}
+		}
+		if err := resolveCrateExternalRefs(cr, ctx, asset, fields, tokSubLayers, "sublayer"); err != nil {
+			return nil, err
 		}
 	}
 
@@ -112,11 +125,21 @@ func decodeCrateToScene(data []byte) (*ir.Asset, error) {
 		if len(asset.Nodes) > nodeIdxBefore {
 			pathToNode[spec.pathIdx] = nodeIdxBefore
 		}
+		if err := resolveCrateExternalRefs(cr, ctx, asset, fields, tokReferences, "reference"); err != nil {
+			return nil, err
+		}
+		if err := resolveCrateExternalRefs(cr, ctx, asset, fields, tokPayload, "payload"); err != nil {
+			return nil, err
+		}
+		if nodeIdx, ok := pathToNode[spec.pathIdx]; ok {
+			recordCrateInheritArcs(cr, fields, nodeIdx, &assetInherits)
+		}
 	}
 
 	wireDeferredShaders(cr, asset, matPathToIdx, shaders)
 	wireDeferredGeomSubsets(cr, asset, meshPathToIdx, gsubsets)
 	wireDeferredBlendShapes(cr, asset, meshPathToIdx, bshapes)
+	resolveInheritedNodes(asset, assetInherits)
 
 	asset.RootNodes = asset.RootNodes[:0]
 
@@ -148,14 +171,160 @@ func decodeCrateToScene(data []byte) (*ir.Asset, error) {
 	return asset, nil
 }
 
+func isCrateRootSpec(cr *crateReader, spec crateSpec) bool {
+	if spec.specType == specTypePseudoRoot {
+		return true
+	}
+	if spec.pathIdx < 0 || int(spec.pathIdx) >= len(cr.paths) {
+		return false
+	}
+	return cr.parentPathIdx(spec.pathIdx) < 0 && cr.pathName(spec.pathIdx) == ""
+}
+
+func resolveCrateExternalRefs(
+	cr *crateReader,
+	ctx crateDecodeContext,
+	asset *ir.Asset,
+	fields []crateField,
+	fieldName, relation string,
+) error {
+	f, ok := cr.findFieldValue(fields, fieldName)
+	if !ok {
+		return nil
+	}
+	for _, refPath := range crateFieldStrings(cr, f) {
+		refPath = extractAssetPath(refPath)
+		if refPath == "" {
+			continue
+		}
+		if ctx.reporter != nil {
+			ctx.reporter.AddDependency("scene", refPath, relation, usdaReportedBy)
+		}
+		if ctx.archive == nil {
+			continue
+		}
+		refScene, err := loadCrateRefScene(ctx, refPath)
+		if err != nil {
+			return err
+		}
+		if refScene != nil {
+			mergeRefScene(asset, refScene)
+		}
+	}
+	return nil
+}
+
+func recordCrateInheritArcs(cr *crateReader, fields []crateField, nodeIdx int, inherits *[]inheritArc) {
+	for _, fieldName := range []string{tokInherits, tokSpecializes} {
+		f, ok := cr.findFieldValue(fields, fieldName)
+		if !ok {
+			continue
+		}
+		for _, basePath := range crateFieldStrings(cr, f) {
+			basePath = strings.Trim(basePath, "<>")
+			basePath = strings.TrimPrefix(basePath, "/")
+			if basePath == "" {
+				continue
+			}
+			*inherits = append(*inherits, inheritArc{nodeIdx: nodeIdx, basePath: basePath})
+		}
+	}
+}
+
+func crateFieldStrings(cr *crateReader, field crateField) []string {
+	if values := cr.readStringArray(field.valueRep); len(values) > 0 {
+		return compactStrings(values)
+	}
+	if values := cr.readTokenArray(field.valueRep); len(values) > 0 {
+		return compactStrings(values)
+	}
+	if value := cr.readInlineString(field.valueRep); value != "" {
+		return []string{value}
+	}
+	if value := cr.readInlineToken(field.valueRep); value != "" {
+		return []string{value}
+	}
+	return nil
+}
+
+func compactStrings(values []string) []string {
+	out := values[:0]
+	for _, value := range values {
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func loadCrateRefScene(ctx crateDecodeContext, refPath string) (*ir.Asset, error) {
+	for _, file := range ctx.archive {
+		if !strings.HasSuffix(file.Name, "/"+refPath) && file.Name != refPath {
+			continue
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return nil, err
+		}
+		data, err := decutil.ReadAllLimit(rc, ctx.maxFileSize)
+		rc.Close() //nolint:errcheck,gosec
+		if err != nil {
+			return nil, err
+		}
+		if hasUSDCMagic(data) {
+			return decodeCrateToSceneWithContext(data, ctx)
+		}
+		parser := &usdaParser{
+			ls:          decutil.LineScanner{Data: data},
+			asset:       ir.NewAsset(ir.FormatUSD),
+			archive:     ctx.archive,
+			maxFileSize: ctx.maxFileSize,
+			reporter:    ctx.reporter,
+		}
+		parser.asset.UpAxis = ir.YUp
+		parser.asset.Unit = 1.0
+		parser.asset.Metadata.SourceVersion = usdaSourceVersion
+		parser.parse()
+		if parser.err != nil {
+			return nil, parser.err
+		}
+		return parser.asset, nil
+	}
+	return nil, nil
+}
+
 //nolint:funlen,gocyclo // mesh reads all attributes inline
 func convertCrateMesh(cr *crateReader, fields []crateField, name string, asset *ir.Asset) {
 	var prim ir.Primitive
 	prim.Mode = ir.Triangles
 	prim.MaterialIndex = ir.NoIndex
+	var morphTargets []ir.MorphTarget
 
 	if f, ok := cr.findFieldValue(fields, tokPoints); ok {
 		prim.Data.Positions = cr.readVec3fArray(f.valueRep)
+	} else if f, ok := cr.findFieldValue(fields, tokTimeSamples); ok {
+		times, frames := cr.readTimeSampledVec3(f.valueRep)
+		if len(frames) > 0 {
+			prim.Data.Positions = frames[0]
+			for fi := 1; fi < len(frames); fi++ {
+				mt := ir.MorphTarget{Name: "frame_" + strconv.Itoa(int(times[fi]))}
+				mt.Positions = make([][3]float32, len(frames[fi]))
+				for vi := range frames[fi] {
+					if vi >= len(frames[0]) {
+						continue
+					}
+					mt.Positions[vi] = [3]float32{
+						frames[fi][vi][0] - frames[0][vi][0],
+						frames[fi][vi][1] - frames[0][vi][1],
+						frames[fi][vi][2] - frames[0][vi][2],
+					}
+				}
+				morphTargets = append(morphTargets, mt)
+			}
+		}
 	}
 	if f, ok := cr.findFieldValue(fields, tokFaceIdx); ok {
 		prim.Data.Indices = cr.readUint32Array(f.valueRep)
@@ -237,6 +406,7 @@ func convertCrateMesh(cr *crateReader, fields []crateField, name string, asset *
 	}
 
 	prim.Data.VertexCount = len(prim.Data.Positions)
+	prim.MorphTargets = morphTargets
 	mesh := &ir.Mesh{
 		Name:       name,
 		Primitives: []ir.Primitive{prim},

@@ -198,6 +198,66 @@ func TestCrate_ReadTokenArray(t *testing.T) {
 	})
 }
 
+func TestCrate_ReadInlineString(t *testing.T) {
+	cr := &crateReader{strings: []string{"./ref.usda", "./heavy.usda"}}
+	assert.Equal(t, "./ref.usda", cr.readInlineString(makeVR(0)))
+	assert.Equal(t, "./heavy.usda", cr.readInlineString(makeVR(1)))
+	assert.Equal(t, "", cr.readInlineString(makeVR(2)))
+}
+
+func TestCrate_ReadStringArray(t *testing.T) {
+	buf := make([]byte, 32)
+	off := 8
+	putU64LE(buf, off, 2)
+	putU32LE(buf, off+8, 0)
+	putU32LE(buf, off+12, 1)
+
+	cr := &crateReader{
+		data:    buf,
+		strings: []string{"./ref.usda", "./payload.usda"},
+	}
+	result := cr.readStringArray(makeVR(off))
+	require.Len(t, result, 2)
+	assert.Equal(t, "./ref.usda", result[0])
+	assert.Equal(t, "./payload.usda", result[1])
+}
+
+func TestCrate_ReadTimeSampledVec3(t *testing.T) {
+	buf := make([]byte, 128)
+	sample0 := 64
+	putU64LE(buf, sample0, 2)
+	putF32LE(buf, sample0+8, 0)
+	putF32LE(buf, sample0+12, 0)
+	putF32LE(buf, sample0+16, 0)
+	putF32LE(buf, sample0+20, 1)
+	putF32LE(buf, sample0+24, 0)
+	putF32LE(buf, sample0+28, 0)
+
+	sample1 := 96
+	putU64LE(buf, sample1, 2)
+	putF32LE(buf, sample1+8, 0.1)
+	putF32LE(buf, sample1+12, 0)
+	putF32LE(buf, sample1+16, 0)
+	putF32LE(buf, sample1+20, 1.1)
+	putF32LE(buf, sample1+24, 0)
+	putF32LE(buf, sample1+28, 0)
+
+	timeSamples := 8
+	putU64LE(buf, timeSamples, 2)
+	putF64LE(buf, timeSamples+8, 0)
+	putU64LE(buf, timeSamples+16, makeVR(sample0))
+	putF64LE(buf, timeSamples+24, 1)
+	putU64LE(buf, timeSamples+32, makeVR(sample1))
+
+	cr := &crateReader{data: buf}
+	times, frames := cr.readTimeSampledVec3(makeVR(timeSamples))
+	require.Len(t, times, 2)
+	require.Len(t, frames, 2)
+	assert.InDelta(t, float32(1), times[1], 0.001)
+	assert.InDelta(t, float32(0.1), frames[1][0][0], 0.001)
+	assert.InDelta(t, float32(1.1), frames[1][1][0], 0.001)
+}
+
 func TestCrate_ParentPathIdx(t *testing.T) {
 	cr := &crateReader{
 		paths: []cratePath{

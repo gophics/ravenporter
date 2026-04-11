@@ -211,7 +211,10 @@ func (d *Decoder) Decode(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.
 	}
 
 	if hasUSDCMagic(data) {
-		return decodeCrateToScene(data)
+		return decodeCrateToSceneWithContext(data, crateDecodeContext{
+			maxFileSize: opts.MaxFileSize,
+			reporter:    opts.Reporter,
+		})
 	}
 
 	if len(data) >= usdzMinSize && data[0] == usdzMagic0 && data[1] == usdzMagic1 {
@@ -261,7 +264,11 @@ func decodeUSDZ(data []byte, reporter detect.DecodeReporter, maxFileSize int64) 
 		}
 		if hasUSDCMagic(inner) {
 			var crateErr error
-			asset, crateErr = decodeCrateToScene(inner)
+			asset, crateErr = decodeCrateToSceneWithContext(inner, crateDecodeContext{
+				archive:     zr.File,
+				maxFileSize: maxFileSize,
+				reporter:    reporter,
+			})
 			if crateErr != nil {
 				return nil, crateErr
 			}
@@ -337,11 +344,6 @@ type usdaParser struct {
 	reporter    detect.DecodeReporter
 }
 
-type inheritArc struct {
-	nodeIdx  int
-	basePath string
-}
-
 func (p *usdaParser) parse() {
 	for b := p.ls.Next(); p.err == nil && b != nil; b = p.ls.Next() {
 		line := decutil.Bstr(b)
@@ -404,7 +406,7 @@ func (p *usdaParser) parse() {
 			p.depth--
 		}
 	}
-	p.resolveInherits()
+	resolveInheritedNodes(p.asset, p.inherits)
 }
 
 func (p *usdaParser) resolveReference(line string) {
@@ -447,7 +449,11 @@ func (p *usdaParser) loadRefScene(refPath string) (*ir.Asset, error) {
 		return nil, err
 	}
 	if hasUSDCMagic(refData) {
-		refScene, err := decodeCrateToScene(refData)
+		refScene, err := decodeCrateToSceneWithContext(refData, crateDecodeContext{
+			archive:     p.archive,
+			maxFileSize: p.maxFileSize,
+			reporter:    p.reporter,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -486,74 +492,6 @@ func (p *usdaParser) readArchiveFile(name string) ([]byte, error) {
 		return data, nil
 	}
 	return nil, nil
-}
-
-func mergeRefScene(dst, src *ir.Asset) {
-	nodeOff := len(dst.Nodes)
-	meshOff := len(dst.Meshes)
-	matOff := len(dst.Materials)
-	texOff := len(dst.Textures)
-	imgOff := len(dst.Images)
-	skelOff := len(dst.Skeletons)
-	camOff := len(dst.Cameras)
-	lightOff := len(dst.Lights)
-
-	dst.Meshes = append(dst.Meshes, src.Meshes...)
-	dst.Materials = append(dst.Materials, src.Materials...)
-	dst.Textures = append(dst.Textures, src.Textures...)
-	dst.Images = append(dst.Images, src.Images...)
-	dst.Skeletons = append(dst.Skeletons, src.Skeletons...)
-	dst.Cameras = append(dst.Cameras, src.Cameras...)
-	dst.Lights = append(dst.Lights, src.Lights...)
-
-	for i := range src.Nodes {
-		n := src.Nodes[i]
-		if n.MeshIndex != ir.NoIndex {
-			n.MeshIndex += meshOff
-		}
-		if n.SkinIndex != ir.NoIndex {
-			n.SkinIndex += skelOff
-		}
-		if n.CameraIndex != ir.NoIndex {
-			n.CameraIndex += camOff
-		}
-		if n.LightIndex != ir.NoIndex {
-			n.LightIndex += lightOff
-		}
-		for j := range n.Children {
-			n.Children[j] += nodeOff
-		}
-		dst.Nodes = append(dst.Nodes, n)
-	}
-	for _, ri := range src.RootNodes {
-		dst.RootNodes = append(dst.RootNodes, ri+nodeOff)
-	}
-	for _, tex := range dst.Textures[texOff:] {
-		if tex != nil && tex.ImageIndex != ir.NoIndex {
-			tex.ImageIndex += imgOff
-		}
-	}
-	for _, m := range dst.Materials[matOff:] {
-		offsetTexRef(m.BaseColorTexture, texOff)
-		offsetTexRef(m.MetallicTexture, texOff)
-		offsetTexRef(m.RoughnessTexture, texOff)
-		offsetTexRef(m.NormalTexture, texOff)
-		offsetTexRef(m.EmissiveTexture, texOff)
-		offsetTexRef(m.OcclusionTexture, texOff)
-	}
-	for i := range src.Meshes {
-		for j := range src.Meshes[i].Primitives {
-			if src.Meshes[i].Primitives[j].MaterialIndex != ir.NoIndex {
-				dst.Meshes[meshOff+i].Primitives[j].MaterialIndex += matOff
-			}
-		}
-	}
-}
-
-func offsetTexRef(ref *ir.TextureRef, off int) {
-	if ref != nil {
-		ref.TextureIndex += off
-	}
 }
 
 func (p *usdaParser) parseSublayers(line string) {
@@ -605,45 +543,6 @@ func (p *usdaParser) parseInheritArc(line string) {
 	}
 	nodeIdx := len(p.asset.Nodes) - 1
 	p.inherits = append(p.inherits, inheritArc{nodeIdx: nodeIdx, basePath: basePath})
-}
-
-func (p *usdaParser) resolveInherits() {
-	if len(p.inherits) == 0 {
-		return
-	}
-	nameMap := make(map[string]int, len(p.asset.Nodes))
-	for i := range p.asset.Nodes {
-		nameMap[p.asset.Nodes[i].Name] = i
-	}
-
-	for _, arc := range p.inherits {
-		baseName := arc.basePath
-		if slashIdx := strings.LastIndexByte(arc.basePath, '/'); slashIdx >= 0 {
-			baseName = arc.basePath[slashIdx+1:]
-		}
-		baseIdx, ok := nameMap[baseName]
-		if !ok {
-			continue
-		}
-		if arc.nodeIdx >= len(p.asset.Nodes) {
-			continue
-		}
-		dst := &p.asset.Nodes[arc.nodeIdx]
-		src := &p.asset.Nodes[baseIdx]
-
-		if dst.MeshIndex == ir.NoIndex && src.MeshIndex != ir.NoIndex {
-			dst.MeshIndex = src.MeshIndex
-		}
-		if dst.SkinIndex == ir.NoIndex && src.SkinIndex != ir.NoIndex {
-			dst.SkinIndex = src.SkinIndex
-		}
-		if dst.CameraIndex == ir.NoIndex && src.CameraIndex != ir.NoIndex {
-			dst.CameraIndex = src.CameraIndex
-		}
-		if dst.LightIndex == ir.NoIndex && src.LightIndex != ir.NoIndex {
-			dst.LightIndex = src.LightIndex
-		}
-	}
 }
 
 func (p *usdaParser) parseMeshPrim(defLine string) { //nolint:funlen,gocyclo // mesh parsing needs all attributes inline
@@ -1118,18 +1017,6 @@ func (p *usdaParser) wireTextures(mat *ir.Material, shaders []texShader, connect
 			}
 		}
 	}
-}
-
-func extractAssetPath(line string) string {
-	at1 := strings.Index(line, "@")
-	if at1 < 0 {
-		return ""
-	}
-	at2 := strings.Index(line[at1+1:], "@")
-	if at2 < 0 {
-		return ""
-	}
-	return line[at1+1 : at1+1+at2]
 }
 
 func (p *usdaParser) collectArray(firstLine string) string {
