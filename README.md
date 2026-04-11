@@ -5,6 +5,8 @@ tools, and asset pipelines.
 
 It loads source assets into a single runtime-oriented IR, [`ir.Asset`](./ir/asset.go), and it can also write and read a cooked cache format through [`cache`](./cache/). The goal is straightforward: one import surface for models, images, audio, and fonts without dragging engine-specific assumptions into the library.
 
+> Development status: RavenPorter is still under active development. Public APIs, decoder coverage, cache details, and documentation may change before the first stable release.
+
 ## Requirements
 
 - Go `1.25.7` or newer
