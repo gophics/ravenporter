@@ -2,6 +2,8 @@ name: docs
 
 on:
   push:
+    branches-ignore:
+      - master
     paths:
       - ".github/workflows/docs.yml"
       - ".github/workflows/deploy-docs.yml"

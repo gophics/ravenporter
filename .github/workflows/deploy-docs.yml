@@ -20,13 +20,46 @@ concurrency:
 env:
   DOCS_SITE_URL: https://${{ github.repository_owner }}.github.io
   DOCS_BASE_PATH: /${{ github.event.repository.name }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
-    name: build pages artifact
+  verify:
+    name: verify docs
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: docs
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: docs/package.json
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install docs dependencies
+        run: npm ci
+
+      - name: Run Astro check
+        run: npm run check
+
+  build:
+    name: build pages artifact
+    needs: verify
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: docs
 
     steps:
       - name: Check out repository
@@ -45,15 +78,9 @@ jobs:
           cache-dependency-path: docs/package-lock.json
 
       - name: Install docs dependencies
-        working-directory: docs
         run: npm ci
 
-      - name: Run Astro check
-        working-directory: docs
-        run: npm run check
-
       - name: Build docs
-        working-directory: docs
         run: npm run build
 
       - name: Upload GitHub Pages artifact
