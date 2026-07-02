@@ -1,4 +1,4 @@
-//nolint:mnd // Meshopt bitstream values are fixed by the format.
+//nolint:mnd,gosec // Meshopt bitstream values and signed byte transforms are fixed by the format.
 package gltf
 
 import (

@@ -2,6 +2,16 @@
 
 All notable changes to RavenPorter will be documented in this file.
 
+## [Unreleased]
+
+Draco glTF import readiness.
+
+Highlights:
+
+- added glTF/GLB import support for `KHR_draco_mesh_compression` using pure-Go Draco decoding
+- added low-allocation Draco primitive decode coverage with generated, fuzz, cache, benchmark, and Khronos fixture tests
+- cleaned repo-wide lint debt so release checks pass cleanly
+
 ## [0.1.1] - 2026-04-12
 
 Runtime fidelity update.

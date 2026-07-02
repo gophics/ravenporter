@@ -103,7 +103,7 @@ func parseColor(s string) [4]float32 {
 	var c [4]float32
 	for i := range min(len(fields), colorComponents) {
 		v, _ := strconv.ParseFloat(fields[i], 32) //nolint:errcheck // 0.0 on failure
-		c[i] = float32(v)                         //nolint:gosec // i bounded by colorComponents
+		c[i] = float32(v)
 	}
 	if len(fields) < colorComponents {
 		c[3] = 1
@@ -116,7 +116,7 @@ func parseColor3(s string) [3]float32 {
 	var c [3]float32
 	for i := range min(len(fields), 3) { //nolint:mnd // RGB
 		v, _ := strconv.ParseFloat(fields[i], 32) //nolint:errcheck // 0.0 on failure
-		c[i] = float32(v)                         //nolint:gosec // i bounded by 3
+		c[i] = float32(v)
 	}
 	return c
 }

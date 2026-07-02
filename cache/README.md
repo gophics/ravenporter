@@ -37,4 +37,4 @@ RavenPorter Cache is the cooked runtime asset format used by the `cache` package
 - Call `(*cache.Asset).Close()` when you open a reader-backed cache through `Open` or lazy `Read`.
 - Use `WithEagerMedia()` when you want the old all-bytes-materialized behavior during `Read`/`Open`.
 - Decoded image pixels are not serialized by default when compressed bytes are enough to reconstruct them.
-- `KHR_draco_mesh_compression` remains unsupported in the source glTF importer and is therefore unsupported in cooked runtime assets.
+- Draco-compressed glTF meshes are decoded by the source importer before cooking, so cache files store normal IR mesh arrays.

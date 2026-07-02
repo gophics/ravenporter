@@ -187,5 +187,5 @@ For an offline game-asset workflow, the usual sequence is:
 
 ## Current Limits
 
-- `KHR_draco_mesh_compression` is intentionally unsupported.
+- Draco- and meshopt-compressed glTF meshes are decoded during import before validation, reporting, or cooking.
 - The only public CLI emitter format today is JSON.

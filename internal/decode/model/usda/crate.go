@@ -464,7 +464,7 @@ func (cr *crateReader) findFieldValue(fields []crateField, name string) (crateFi
 }
 
 func (cr *crateReader) readInlineFloat(vr uint64) float32 {
-	bits := uint32((vr >> valueRepPayShift) & valueRepPayMask) //nolint:gosec // intentional truncation
+	bits := uint32((vr >> valueRepPayShift) & valueRepPayMask)
 	return math.Float32frombits(bits)
 }
 
@@ -486,7 +486,7 @@ func (cr *crateReader) readInlineBool(vr uint64) bool {
 }
 
 func (cr *crateReader) readVec3fArray(vr uint64) [][3]float32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -508,7 +508,7 @@ func (cr *crateReader) readVec3fArray(vr uint64) [][3]float32 {
 }
 
 func (cr *crateReader) readQuatfArray(vr uint64) [][4]float32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -531,7 +531,7 @@ func (cr *crateReader) readQuatfArray(vr uint64) [][4]float32 {
 }
 
 func (cr *crateReader) readVec2fArray(vr uint64) [][2]float32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -552,7 +552,7 @@ func (cr *crateReader) readVec2fArray(vr uint64) [][2]float32 {
 }
 
 func (cr *crateReader) readIntArray(vr uint64) []int32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -569,7 +569,7 @@ func (cr *crateReader) readIntArray(vr uint64) []int32 {
 }
 
 func (cr *crateReader) readUint32Array(vr uint64) []uint32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -586,7 +586,7 @@ func (cr *crateReader) readUint32Array(vr uint64) []uint32 {
 }
 
 func (cr *crateReader) readFloatArray(vr uint64) []float32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -609,7 +609,7 @@ func (cr *crateReader) readJointIndices(vr uint64) [][4]uint16 {
 	}
 	result := make([][4]uint16, (len(raw)+jointStride-1)/jointStride)
 	for i, v := range raw {
-		result[i/jointStride][i%jointStride] = uint16(v) //nolint:gosec // joint index fits uint16
+		result[i/jointStride][i%jointStride] = uint16(v)
 	}
 	return result
 }
@@ -627,7 +627,7 @@ func (cr *crateReader) readJointWeights(vr uint64) [][4]float32 {
 }
 
 func (cr *crateReader) readFloat64(vr uint64) float64 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateF64Size > len(cr.data) {
 		return 0
 	}
@@ -635,7 +635,7 @@ func (cr *crateReader) readFloat64(vr uint64) float64 {
 }
 
 func (cr *crateReader) readVec3dArray(vr uint64) [][3]float32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -657,19 +657,19 @@ func (cr *crateReader) readVec3dArray(vr uint64) [][3]float32 {
 }
 
 func (cr *crateReader) readMatrix4d(vr uint64) [16]float32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+mat4dStride > len(cr.data) {
 		return [16]float32{}
 	}
 	var m [16]float32
 	for i := range mat4dElems {
-		m[i] = float32(binread.ReadF64LE(cr.data[offset+i*crateF64Size:])) //nolint:gosec // bounded by mat4dStride check
+		m[i] = float32(binread.ReadF64LE(cr.data[offset+i*crateF64Size:]))
 	}
 	return m
 }
 
 func (cr *crateReader) readMatrix4dArray(vr uint64) [][16]float32 {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -688,7 +688,7 @@ func (cr *crateReader) readMatrix4dArray(vr uint64) [][16]float32 {
 }
 
 func (cr *crateReader) readTokenArray(vr uint64) []string {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -706,7 +706,7 @@ func (cr *crateReader) readTokenArray(vr uint64) []string {
 }
 
 func (cr *crateReader) readStringArray(vr uint64) []string {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil
 	}
@@ -726,7 +726,7 @@ func (cr *crateReader) readStringArray(vr uint64) []string {
 }
 
 func (cr *crateReader) readTimeSampledVec3(vr uint64) (times []float32, frames [][][3]float32) {
-	offset := int((vr >> valueRepPayShift) & valueRepAddrMask) //nolint:gosec // bounded
+	offset := int((vr >> valueRepPayShift) & valueRepAddrMask)
 	if offset <= 0 || offset+crateU64Size > len(cr.data) {
 		return nil, nil
 	}

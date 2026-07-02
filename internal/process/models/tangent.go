@@ -95,7 +95,7 @@ func calcTangents(d *ir.MeshData) {
 		}
 	} else {
 		for i := 0; i < triCount; i++ {
-			processTri(uint32(i*vertsPerTri), uint32(i*vertsPerTri+1), uint32(i*vertsPerTri+2)) //nolint:mnd,gosec,lll // native bounds natively
+			processTri(uint32(i*vertsPerTri), uint32(i*vertsPerTri+1), uint32(i*vertsPerTri+2)) //nolint:mnd // native bounds natively
 		}
 	}
 

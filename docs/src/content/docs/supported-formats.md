@@ -64,4 +64,4 @@ Use the linked format names to open the per-decoder specification reference page
 - Detection uses a mix of file signatures, decoder probes, and filename extensions through the [`detect.Registry`](../detect-package/).
 - GPU-compressed image payloads such as DDS and KTX can stay in compressed passthrough form inside the IR and cache model.
 - Support here means RavenPorter can detect and import the source into [`ir.Asset`](../ir-overview/), not that every format feature is preserved one-to-one.
-- `KHR_draco_mesh_compression` is still unsupported.
+- glTF `KHR_draco_mesh_compression` and `EXT_meshopt_compression` meshes are decoded into regular IR mesh data during import.

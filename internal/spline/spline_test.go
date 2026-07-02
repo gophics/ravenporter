@@ -100,6 +100,21 @@ func TestEvalBSpline(t *testing.T) {
 	}
 }
 
+func TestEvalBSplineEdgeCases(t *testing.T) {
+	pts := [][4]float32{h(1, 2, 0), h(3, 4, 0)}
+	knots := []float32{0, 0, 1, 1}
+
+	if got := EvalBSpline(-1, pts, knots, 0.5); got != pts[1] {
+		t.Errorf("negative degree should clamp to zero-degree evaluation, got %v", got)
+	}
+	if got := EvalBSpline(3, pts, nil, 0.5); got != pts[0] {
+		t.Errorf("missing knots should fall back to first point, got %v", got)
+	}
+	if got := EvalBSpline(3, pts, []float32{0}, 0.5); got != pts[1] {
+		t.Errorf("short knots should stay bounded, got %v", got)
+	}
+}
+
 func TestEvalCardinal(t *testing.T) {
 	pts := [][4]float32{h(0, 0, 0), h(1, 2, 0), h(2, 0, 0), h(3, 2, 0)}
 	tests := []struct {

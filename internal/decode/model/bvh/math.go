@@ -25,10 +25,10 @@ func eulerToQuat(vals [][]byte, offset int, order [axisCount]int) [4]float32 {
 	var angles [axisCount]float64
 	for i := range axisCount {
 		v, _ := strconv.ParseFloat(string(vals[offset+i]), 64) //nolint:errcheck
-		angles[order[i]] = v * mathx.DegToRad                  //nolint:gosec
+		angles[order[i]] = v * mathx.DegToRad
 	}
 
-	return mathx.EulerToQuat(angles[0], angles[1], angles[2]) //nolint:gosec
+	return mathx.EulerToQuat(angles[0], angles[1], angles[2])
 }
 
 func parseF32B(b []byte) float32 {

@@ -23,13 +23,13 @@ func (s *synthesizer) processSamples(samples [subbands]float64, ch int, out []fl
 		sum := 0.0
 		row := &synthCos[i]
 		for k := range 32 {
-			sum += samples[k] * row[k] //nolint:gosec // k < 32 == len(row)
+			sum += samples[k] * row[k]
 		}
-		matrixOut[i] = sum //nolint:gosec // i < 64 == len(matrixOut)
+		matrixOut[i] = sum
 	}
 
 	for i := range 64 {
-		s.buf[ch][(offset+i)&1023] = matrixOut[i] //nolint:gosec // i < 64
+		s.buf[ch][(offset+i)&1023] = matrixOut[i]
 	}
 
 	written := 0

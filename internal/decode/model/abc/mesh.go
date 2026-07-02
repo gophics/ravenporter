@@ -34,7 +34,7 @@ func (p *ogawaParser) readPropertyNamesFromData(child uint64, result map[string]
 	if rawSize > uint64(len(p.data)) {
 		return nil
 	}
-	size := int(rawSize) //nolint:gosec // bounded
+	size := int(rawSize) //nolint:gosec // bounded by len(p.data) above.
 	hdrStart := pos + ogawaU64Size
 	if hdrStart+size > len(p.data) || size < i32Size {
 		return nil
@@ -86,7 +86,7 @@ func (p *ogawaParser) readPropertyName(child uint64) string {
 	if rawSize > uint64(len(p.data)) {
 		return ""
 	}
-	size := int(rawSize) //nolint:gosec // bounded
+	size := int(rawSize) //nolint:gosec // bounded by len(p.data) above.
 	hdrStart := pos + ogawaU64Size
 	if hdrStart+i32Size > len(p.data) || size < i32Size {
 		return ""
@@ -165,7 +165,7 @@ func (p *ogawaParser) readSingleMatrix(child uint64) ([16]float32, bool) {
 	}
 	var mat [16]float32
 	for i := range xformF64Count {
-		mat[i] = float32(math.Float64frombits(binread.ReadU64LE(buf[i*f64Size:]))) //nolint:gosec // bounded by xformF64Count
+		mat[i] = float32(math.Float64frombits(binread.ReadU64LE(buf[i*f64Size:])))
 	}
 	return mat, true
 }
@@ -220,7 +220,7 @@ func (p *ogawaParser) extractCameraFromNamedProps(children []uint64, props map[s
 	near := p.readF64Property(children, props, abcPropNearClip)
 	far := p.readF64Property(children, props, abcPropFarClip)
 
-	focalCM := focal * 0.1 //nolint:mnd // focal length mm → cm
+	focalCM := focal * 0.1 //nolint:mnd // focal length mm to cm
 	fov := fovFactor * math.Atan(vertAp/(fovFactor*focalCM))
 
 	cam := &ir.Camera{
@@ -370,7 +370,7 @@ func (p *ogawaParser) readVec4Array(child uint64) [][4]float32 {
 
 func (p *ogawaParser) readInt32Array(child uint64) []int32 {
 	return readBinaryArray(p, child, i32Size, func(b []byte) int32 {
-		return int32(binread.ReadU32LE(b)) //nolint:gosec // signed cast
+		return int32(binread.ReadU32LE(b)) //nolint:gosec // Alembic stores int32 payloads as raw little-endian bits.
 	})
 }
 
@@ -407,7 +407,7 @@ func (p *ogawaParser) readDataPayload(child uint64) []byte {
 	if rawSize > uint64(len(p.data)) {
 		return nil
 	}
-	size := int(rawSize) //nolint:gosec // bounded
+	size := int(rawSize) //nolint:gosec // bounded by len(p.data) above.
 	start := pos + ogawaU64Size
 	if start+size > len(p.data) || size <= 0 {
 		return nil
@@ -439,9 +439,9 @@ func triangulateAlembicFaces(faceIndices, faceCounts []int32) []uint32 {
 		}
 		for j := 2; j < c; j++ {
 			result = append(result,
-				uint32(faceIndices[idx]),     //nolint:gosec // bounded
-				uint32(faceIndices[idx+j-1]), //nolint:gosec // bounded
-				uint32(faceIndices[idx+j]),   //nolint:gosec // bounded
+				uint32(faceIndices[idx]),
+				uint32(faceIndices[idx+j-1]),
+				uint32(faceIndices[idx+j]),
 			)
 		}
 		idx += c

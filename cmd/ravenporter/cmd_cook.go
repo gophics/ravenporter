@@ -116,6 +116,7 @@ func writeCacheFile(outputPath string, result *ravenporter.Result, options ...ca
 		err = closeErr
 		return err
 	}
+	//nolint:gosec // CLI output path is intentionally user-controlled.
 	if renameErr := os.Rename(tmpPath, outputPath); renameErr != nil {
 		err = renameErr
 		return err

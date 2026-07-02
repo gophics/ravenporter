@@ -128,7 +128,7 @@ func buildCurveMesh(parsed *objData, c curve3D) *ir.Mesh {
 
 	indices := make([]uint32, 0, len(pts)*2) //nolint:mnd // 2 indices per line
 	for i := 0; i < len(pts)-1; i++ {
-		indices = append(indices, uint32(i), uint32(i+1)) //nolint:gosec // bounded
+		indices = append(indices, uint32(i), uint32(i+1))
 	}
 
 	return &ir.Mesh{
@@ -217,7 +217,7 @@ func evalTrimCurve(c *curve2D, paramVerts [][3]float32) [][2]float32 {
 		t := float32(i) / float32(res)
 		p := evalCurve(c.state, pts, c.knotsU, t)
 		p3 := spline.FromHomogeneous(p)
-		result = append(result, [2]float32{p3[0], p3[1]}) //nolint:gosec // 2D projection
+		result = append(result, [2]float32{p3[0], p3[1]})
 	}
 	return result
 }

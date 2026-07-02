@@ -180,7 +180,7 @@ func readPropUint(buf []byte, offset int, t propType, le bool) uint32 {
 	case propUchar:
 		return uint32(b[0])
 	case propChar:
-		return uint32(int8(b[0])) //nolint:gosec // intentional signed→unsigned
+		return uint32(int8(b[0]))
 	case propUshort:
 		if le {
 			return uint32(binread.ReadU16LE(b))

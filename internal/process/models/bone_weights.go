@@ -76,14 +76,14 @@ func limitVertexWeights(d *ir.MeshData, maxW int) {
 		var active [maxBoneSlots]weightEntry
 		count := 0
 		for k := range vec4Len {
-			if w0[k] > 0 { //nolint:gosec // k bounded by [4]float32 array size
+			if w0[k] > 0 {
 				active[count] = weightEntry{w0[k], j0[k]}
 				count++
 			}
 		}
 		if hasWeights1 && i < len(d.Weights1) {
 			for k := range vec4Len {
-				if w1[k] > 0 { //nolint:gosec // k bounded by [4]float32 array size
+				if w1[k] > 0 {
 					active[count] = weightEntry{w1[k], j1[k]}
 					count++
 				}
@@ -113,8 +113,8 @@ func limitVertexWeights(d *ir.MeshData, maxW int) {
 				newW0[k] = active[k].w * scale
 				newJ0[k] = active[k].j
 			} else {
-				newW1[k-vec4Len] = active[k].w * scale
-				newJ1[k-vec4Len] = active[k].j
+				newW1[k-vec4Len] = active[k].w * scale //nolint:gosec // maxW is clamped to two vec4 lanes.
+				newJ1[k-vec4Len] = active[k].j         //nolint:gosec // maxW is clamped to two vec4 lanes.
 			}
 		}
 

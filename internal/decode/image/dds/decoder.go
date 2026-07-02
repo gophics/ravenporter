@@ -354,9 +354,9 @@ func applyDDSMask(val, mask, shift, bits uint32) byte {
 	}
 	v := (val & mask) >> shift
 	if bits == bitsPerByte {
-		return byte(v)
+		return byte(v) //nolint:gosec // mask width is exactly one byte.
 	}
-	return byte((v * colorMax) / ((1 << bits) - 1))
+	return byte((v * colorMax) / ((1 << bits) - 1)) //nolint:gosec // scaled mask value is clamped to one byte.
 }
 
 func (d *Decoder) Extensions() []string { return []string{extDDS} }

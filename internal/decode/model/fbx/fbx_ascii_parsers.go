@@ -179,7 +179,7 @@ func parseASCIIGeometry(s *decutil.LineScanner, depth *int) asciiMeshData {
 				if v < 0 {
 					v = ^v
 				}
-				geo.indices[i] = uint32(v) //nolint:gosec // bounded
+				geo.indices[i] = uint32(v)
 			}
 			*depth += openCount - closeCount - 1
 			continue

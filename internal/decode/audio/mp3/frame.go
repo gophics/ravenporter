@@ -111,7 +111,7 @@ func (fd *frameDecoder) decodeFrame(data []byte, info *mp3Info, out []float32) (
 		for ch := range info.channels {
 			gi := &si.granules[gr][ch]
 
-			readScalefactors(&br2, gi, scalefactors[ch][:], info) //nolint:gosec
+			readScalefactors(&br2, gi, scalefactors[ch][:], info)
 			if ch < maxChannels {
 				huffDecode(&br2, gi, freqs[ch][:], srIdx, info)
 				requantize(gi, freqs[ch][:], scalefactors[ch][:], srIdx, info)
@@ -134,7 +134,7 @@ func (fd *frameDecoder) decodeFrame(data []byte, info *mp3Info, out []float32) (
 			for s := range samplesPerSB {
 				var sbSamples [subbands]float64
 				for sb := range subbands {
-					sbSamples[sb] = subbandSamples[sb][s] //nolint:gosec
+					sbSamples[sb] = subbandSamples[sb][s]
 				}
 				n := fd.synth.processSamples(sbSamples, ch, out, outIdx)
 				outIdx += n
@@ -251,7 +251,7 @@ func (b *bitReader) readBits(n int) int {
 		byteIdx := b.pos / bitsPerByte
 		bitIdx := topBitShift - b.pos%bitsPerByte
 		if byteIdx < len(b.data) {
-			val = (val << 1) | int((b.data[byteIdx]>>uint(bitIdx))&1) //nolint:gosec
+			val = (val << 1) | int((b.data[byteIdx]>>uint(bitIdx))&1)
 		} else {
 			val <<= 1
 		}
@@ -399,7 +399,7 @@ func huffDecode(br *bitReader, gi *granuleInfo, freq []float64, srIdx int, info 
 
 	for region := range 3 {
 		tblIdx := gi.tableSelect[region]
-		regionEnd := regionBounds[region] //nolint:gosec
+		regionEnd := regionBounds[region]
 		if tblIdx == 0 || tblIdx >= len(huffmanDescs) {
 			continue
 		}
@@ -589,16 +589,16 @@ func requantize(gi *granuleInfo, freq []float64, sf []int, srIdx int, info *mp3I
 			if val > 0 {
 				intVal := int(val)
 				if intVal >= 0 && intVal < len(reqPowTab) {
-					freq[i] = multiplier * reqPowTab[intVal] //nolint:gosec
+					freq[i] = multiplier * reqPowTab[intVal]
 				} else {
-					freq[i] = multiplier * math.Pow(val, requantPow) //nolint:gosec
+					freq[i] = multiplier * math.Pow(val, requantPow)
 				}
 			} else {
 				intVal := int(-val)
 				if intVal >= 0 && intVal < len(reqPowTab) {
-					freq[i] = -multiplier * reqPowTab[intVal] //nolint:gosec
+					freq[i] = -multiplier * reqPowTab[intVal]
 				} else {
-					freq[i] = -multiplier * math.Pow(-val, requantPow) //nolint:gosec
+					freq[i] = -multiplier * math.Pow(-val, requantPow)
 				}
 			}
 		}
@@ -614,7 +614,7 @@ func stereoProcess(freqs [][freqLines]float64, gi0, _ *granuleInfo, _, sf1 []int
 	if info.mode == modeJointStereo && (info.modeExt&1) != 0 {
 		isBound = 0
 		for i := freqLines - 1; i >= 0; i-- {
-			if freqs[1][i] != 0 { //nolint:gosec
+			if freqs[1][i] != 0 { //nolint:gosec // caller supplies two channel buffers for stereo processing.
 				isBound = i + 1
 				break
 			}
@@ -672,12 +672,12 @@ func stereoProcess(freqs [][freqLines]float64, gi0, _ *granuleInfo, _, sf1 []int
 				// Apply spatialized scaling from left channel energy into both
 				m := freqs[0][i]
 				freqs[0][i] = m * isRatioLeft
-				freqs[1][i] = m * isRatioRight //nolint:gosec
+				freqs[1][i] = m * isRatioRight //nolint:gosec // caller supplies two channel buffers for stereo processing.
 			} else if msActive {
 				m := freqs[0][i]
-				s := freqs[1][i] //nolint:gosec
+				s := freqs[1][i] //nolint:gosec // caller supplies two channel buffers for stereo processing.
 				freqs[0][i] = (m + s) * sqrt2Inv
-				freqs[1][i] = (m - s) * sqrt2Inv //nolint:gosec
+				freqs[1][i] = (m - s) * sqrt2Inv //nolint:gosec // caller supplies two channel buffers for stereo processing.
 			}
 		}
 	}
@@ -730,11 +730,11 @@ func imdctLong(input, overlap, output []float64, winType int) {
 		for k := range samplesPerSB {
 			sum += input[k] * cos[k]
 		}
-		raw[i] = sum * win[i] //nolint:gosec
+		raw[i] = sum * win[i]
 	}
 
 	for i := range samplesPerSB {
-		output[i] = raw[i] + overlap[i] //nolint:gosec
+		output[i] = raw[i] + overlap[i]
 	}
 	copy(overlap[:samplesPerSB], raw[samplesPerSB:])
 }
@@ -750,7 +750,7 @@ func imdctShort(input, overlap, output []float64) {
 			for k := range imdctShortHalf {
 				sum += input[win*imdctShortHalf+k] * cos[k]
 			}
-			raw[i] = sum * imdctWin[blockTypeShort][i] //nolint:gosec
+			raw[i] = sum * imdctWin[blockTypeShort][i]
 		}
 
 		off := win*imdctShortHalf + imdctShortHalf
@@ -764,7 +764,7 @@ func imdctShort(input, overlap, output []float64) {
 	}
 
 	for i := range samplesPerSB {
-		output[i] = accumulated[i] + overlap[i] //nolint:gosec
+		output[i] = accumulated[i] + overlap[i]
 	}
 	copy(overlap[:samplesPerSB], accumulated[samplesPerSB:])
 }

@@ -57,7 +57,7 @@ func readB44Block(src []byte, pos int) (block [b44BlockPx]uint16, advance int) {
 
 	v := binread.ReadU16LE(src[pos:])
 	for i := range b44BlockPx {
-		block[i] = v //nolint:gosec
+		block[i] = v
 	}
 	return block, b44Flat
 }
@@ -92,7 +92,7 @@ func unpackB44Block(src []byte) [b44BlockPx]uint16 {
 
 	var r [b44DiffCount]int
 	for i := range b44DiffCount {
-		raw := int(bits & b44DiffMask) //nolint:gosec // mask guarantees small value
+		raw := int(bits & b44DiffMask)
 		if raw >= b44DiffHalf {
 			raw -= b44DiffRange
 		}
@@ -116,24 +116,24 @@ func unpackB44Block(src []byte) [b44BlockPx]uint16 {
 	// 12 --> 13 --> 14 --> 15
 	//         6     10     14
 
-	t[4] = halfAdd(t[0], r[0])  //nolint:gosec
-	t[8] = halfAdd(t[4], r[1])  //nolint:gosec
-	t[12] = halfAdd(t[8], r[2]) //nolint:gosec
+	t[4] = halfAdd(t[0], r[0])
+	t[8] = halfAdd(t[4], r[1])
+	t[12] = halfAdd(t[8], r[2])
 
-	t[1] = halfAdd(t[0], r[3])   //nolint:gosec
-	t[5] = halfAdd(t[4], r[4])   //nolint:gosec
-	t[9] = halfAdd(t[8], r[5])   //nolint:gosec
-	t[13] = halfAdd(t[12], r[6]) //nolint:gosec
+	t[1] = halfAdd(t[0], r[3])
+	t[5] = halfAdd(t[4], r[4])
+	t[9] = halfAdd(t[8], r[5])
+	t[13] = halfAdd(t[12], r[6])
 
-	t[2] = halfAdd(t[1], r[7])    //nolint:gosec
-	t[6] = halfAdd(t[5], r[8])    //nolint:gosec
-	t[10] = halfAdd(t[9], r[9])   //nolint:gosec
-	t[14] = halfAdd(t[13], r[10]) //nolint:gosec
+	t[2] = halfAdd(t[1], r[7])
+	t[6] = halfAdd(t[5], r[8])
+	t[10] = halfAdd(t[9], r[9])
+	t[14] = halfAdd(t[13], r[10])
 
-	t[3] = halfAdd(t[2], r[11])   //nolint:gosec
-	t[7] = halfAdd(t[6], r[12])   //nolint:gosec
-	t[11] = halfAdd(t[10], r[13]) //nolint:gosec
-	t[15] = halfAdd(t[14], r[14]) //nolint:gosec
+	t[3] = halfAdd(t[2], r[11])
+	t[7] = halfAdd(t[6], r[12])
+	t[11] = halfAdd(t[10], r[13])
+	t[15] = halfAdd(t[14], r[14])
 
 	return t
 }

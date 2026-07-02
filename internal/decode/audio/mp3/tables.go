@@ -249,9 +249,9 @@ func init() { //nolint:gochecknoinits
 		-0.095, -0.041, -0.0142, -0.0037,
 	}
 	for i := range aliasPairs {
-		denom := math.Sqrt(1.0 + ci[i]*ci[i]) //nolint:gosec
+		denom := math.Sqrt(1.0 + ci[i]*ci[i])
 		csCoeff[i] = 1.0 / denom
-		caCoeff[i] = ci[i] / denom //nolint:gosec
+		caCoeff[i] = ci[i] / denom
 	}
 }
 

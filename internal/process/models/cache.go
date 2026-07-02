@@ -149,7 +149,7 @@ func optimizeVertexCache(d *ir.MeshData, cacheSize int) {
 			d.Indices[baseIdx+1],
 			d.Indices[baseIdx+2],
 		}
-		newIndices = append(newIndices, triVerts[0], triVerts[1], triVerts[2]) //nolint:gosec // bounded by numTris
+		newIndices = append(newIndices, triVerts[0], triVerts[1], triVerts[2])
 
 		for _, v := range triVerts {
 			if int(v) < numVerts {

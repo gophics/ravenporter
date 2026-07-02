@@ -282,7 +282,7 @@ func parseRotTrack(data []byte) (times []float32, values [][4]float32) {
 	values = make([][4]float32, 0, nKeys)
 
 	var accQ [4]float32
-	accQ[3] = 1 //nolint:gosec // identity quaternion w=1
+	accQ[3] = 1
 
 	for range nKeys {
 		if len(data) < keyHdrSize {

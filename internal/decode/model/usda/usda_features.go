@@ -285,8 +285,8 @@ func genSphereMesh(radius float32, segs, rings int) ir.MeshData {
 
 	for y := range rings {
 		for x := range segs {
-			a := uint32(y*(segs+1) + x) //nolint:gosec // small positive loop indices
-			b := a + uint32(segs) + 1   //nolint:gosec // small positive loop indices
+			a := uint32(y*(segs+1) + x) //nolint:gosec // generated fixture dimensions are small constants.
+			b := a + uint32(segs) + 1   //nolint:gosec // generated fixture dimensions are small constants.
 			indices = append(indices, a, b, a+1, b, b+1, a+1)
 		}
 	}
@@ -306,17 +306,17 @@ func genCylinderMesh(radius, height float32, segs int) ir.MeshData {
 	}
 
 	for i := range segs {
-		a := uint32(i * cylinderStride) //nolint:gosec // small positive loop index
+		a := uint32(i * cylinderStride)
 		indices = append(indices, a, a+1, a+cylinderStride, a+1, a+cylinderIdxShift, a+cylinderStride)
 	}
 
-	topC := uint32(len(positions)) //nolint:gosec // positions length fits uint32
+	topC := uint32(len(positions)) //nolint:gosec // generated fixture dimensions are small constants.
 	positions = append(positions, [3]float32{0, halfH, 0})
-	botC := uint32(len(positions)) //nolint:gosec // positions length fits uint32
+	botC := uint32(len(positions)) //nolint:gosec // generated fixture dimensions are small constants.
 	positions = append(positions, [3]float32{0, -halfH, 0})
 
 	for i := range segs {
-		a := uint32(i * cylinderStride) //nolint:gosec // small positive loop index
+		a := uint32(i * cylinderStride)
 		indices = append(indices, topC, a+cylinderStride, a, botC, a+1, a+cylinderIdxShift)
 	}
 	return ir.MeshData{Positions: positions, Indices: indices}
@@ -338,13 +338,13 @@ func genConeMesh(radius, height float32, segs int) ir.MeshData {
 	}
 
 	for i := 1; i <= segs; i++ {
-		indices = append(indices, apex, uint32(i), uint32(i+1)) //nolint:gosec // small positive loop index
+		indices = append(indices, apex, uint32(i), uint32(i+1))
 	}
 
-	botC := uint32(len(positions)) //nolint:gosec // positions length fits uint32
+	botC := uint32(len(positions)) //nolint:gosec // generated fixture dimensions are small constants.
 	positions = append(positions, [3]float32{0, -halfH, 0})
 	for i := 1; i <= segs; i++ {
-		indices = append(indices, botC, uint32(i+1), uint32(i)) //nolint:gosec // small positive loop index
+		indices = append(indices, botC, uint32(i+1), uint32(i))
 	}
 	return ir.MeshData{Positions: positions, Indices: indices}
 }
@@ -354,7 +354,7 @@ func genCapsuleMesh(radius, height float32, segs, hemiRings int) ir.MeshData {
 	top := genSphereMesh(radius, segs, hemiRings)
 	halfH := height / cylinderHalfDiv
 
-	offset := uint32(len(cyl.Positions)) //nolint:gosec // positions length fits uint32
+	offset := uint32(len(cyl.Positions)) //nolint:gosec // generated fixture dimensions are small constants.
 	for i := range top.Positions {
 		top.Positions[i][1] += halfH
 	}
@@ -364,7 +364,7 @@ func genCapsuleMesh(radius, height float32, segs, hemiRings int) ir.MeshData {
 	}
 
 	bot := genSphereMesh(radius, segs, hemiRings)
-	offset = uint32(len(cyl.Positions)) //nolint:gosec // positions length fits uint32
+	offset = uint32(len(cyl.Positions)) //nolint:gosec // generated fixture dimensions are small constants.
 	for i := range bot.Positions {
 		bot.Positions[i][1] -= halfH
 	}
@@ -432,7 +432,7 @@ func parseJointIndices(s string) [][4]uint16 {
 	}
 	result := make([][4]uint16, (len(raw)+jointStride-1)/jointStride)
 	for i, v := range raw {
-		result[i/jointStride][i%jointStride] = uint16(v) //nolint:gosec // joint index fits uint16
+		result[i/jointStride][i%jointStride] = uint16(v)
 	}
 	return result
 }
@@ -467,7 +467,7 @@ func parseMatrix4dArray(s string) [][16]float32 {
 		if end < 0 {
 			end = len(s)
 		}
-		m[elem%mat4Elems] = parseF32(s[:end]) //nolint:gosec // elem modulo bounds idx
+		m[elem%mat4Elems] = parseF32(s[:end])
 		elem++
 		if elem%mat4Elems == 0 {
 			result = append(result, m)
@@ -525,9 +525,9 @@ func curvesToLineIndices(vertCounts []int) []uint32 {
 	offset := uint32(0)
 	for _, c := range vertCounts {
 		for i := 0; i < c-1; i++ {
-			indices = append(indices, offset+uint32(i), offset+uint32(i+1)) //nolint:gosec // bounded
+			indices = append(indices, offset+uint32(i), offset+uint32(i+1))
 		}
-		offset += uint32(c) //nolint:gosec // bounded
+		offset += uint32(c)
 	}
 	return indices
 }

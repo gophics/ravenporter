@@ -183,7 +183,7 @@ func decodeBinary(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, 
 				off := (normalFloats + v*normalFloats) * floatSize
 				positions[base+v] = readFloat3(tri[off:])
 				normals[base+v] = normal
-				indices[base+v] = uint32(base + v) //nolint:gosec // bounded
+				indices[base+v] = uint32(base + v)
 			}
 
 			if hasColors {
@@ -260,7 +260,7 @@ func decodeASCII(r detect.ReadSeekerAt, opts detect.DecodeOptions) (*ir.Asset, e
 
 	indices := make([]uint32, len(positions))
 	for i := range indices {
-		indices[i] = uint32(i) //nolint:gosec // bounded
+		indices[i] = uint32(i)
 	}
 
 	name := defaultMeshName

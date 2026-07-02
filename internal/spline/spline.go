@@ -19,7 +19,10 @@ func FromHomogeneous(p [4]float32) [3]float32 {
 }
 
 func EvalBezier(deg int, pts [][4]float32, t float32) [4]float32 {
-	n := min(deg+1, len(pts))
+	n := min(deg+1, len(pts), MaxStackPts)
+	if n <= 0 {
+		return [4]float32{}
+	}
 	var work [MaxStackPts][4]float32
 	copy(work[:n], pts[:n])
 
@@ -27,7 +30,7 @@ func EvalBezier(deg int, pts [][4]float32, t float32) [4]float32 {
 		for i := 0; i < n-r; i++ {
 			s := 1.0 - t
 			for c := range 4 {
-				work[i][c] = s*work[i][c] + t*work[i+1][c]
+				work[i][c] = s*work[i][c] + t*work[i+1][c] //nolint:gosec // i+1 is bounded by n-r.
 			}
 		}
 	}
@@ -36,7 +39,14 @@ func EvalBezier(deg int, pts [][4]float32, t float32) [4]float32 {
 
 func EvalBSpline(deg int, pts [][4]float32, knots []float32, u float32) [4]float32 {
 	n := len(pts)
-	k := deg + 1
+	if n == 0 {
+		return [4]float32{}
+	}
+	if len(knots) == 0 {
+		return pts[0]
+	}
+	degree := min(max(deg, 0), n-1, MaxStackPts-1)
+	k := degree + 1
 
 	span := k - 1
 	for span < n && span+1 < len(knots) && knots[span+1] <= u {
@@ -46,13 +56,13 @@ func EvalBSpline(deg int, pts [][4]float32, knots []float32, u float32) [4]float
 
 	var d [MaxStackPts][4]float32
 	for j := range k {
-		idx := min(max(span-deg+j, 0), n-1)
+		idx := min(max(span-degree+j, 0), n-1)
 		d[j] = pts[idx]
 	}
 
 	for r := 1; r < k; r++ {
 		for j := k - 1; j >= r; j-- {
-			left := max(span-deg+j, 0)
+			left := min(max(span-degree+j, 0), len(knots)-1)
 			right := min(left+k-r, len(knots)-1)
 			denom := knots[right] - knots[left]
 			if denom == 0 {
@@ -65,7 +75,7 @@ func EvalBSpline(deg int, pts [][4]float32, knots []float32, u float32) [4]float
 			}
 		}
 	}
-	return d[deg]
+	return d[degree] //nolint:gosec // degree is clamped to MaxStackPts-1 above.
 }
 
 // EvalCardinal evaluates a Catmull-Rom spline (s=0.5, cubic).
@@ -97,18 +107,21 @@ func EvalTaylor(pts [][4]float32, t float32) [4]float32 {
 	n := len(pts)
 	var result [4]float32
 	for c := range 4 {
-		result[c] = pts[n-1][c] //nolint:gosec // bounded
+		result[c] = pts[n-1][c]
 	}
 	for i := n - 2; i >= 0; i-- { //nolint:mnd // formula
 		for c := range 4 {
-			result[c] = result[c]*t + pts[i][c] //nolint:gosec // bounded
+			result[c] = result[c]*t + pts[i][c]
 		}
 	}
 	return result
 }
 
 func EvalBasisMatrix(deg int, bmat []float32, pts [][4]float32, t float32) [4]float32 {
-	n := min(deg+1, len(pts))
+	n := min(deg+1, len(pts), MaxStackPts)
+	if n <= 0 {
+		return [4]float32{}
+	}
 	expected := n * n
 	if len(bmat) < expected {
 		return pts[0]
@@ -127,7 +140,7 @@ func EvalBasisMatrix(deg int, bmat []float32, pts [][4]float32, t float32) [4]fl
 			for j := range n {
 				coeff += bmat[i*n+j] * pts[j][c]
 			}
-			result[c] += tv[i] * coeff //nolint:gosec // bounded
+			result[c] += tv[i] * coeff
 		}
 	}
 	return result

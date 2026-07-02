@@ -374,7 +374,7 @@ func readBMPPalette(data []byte, info bmpInfo) ([]byte, error) {
 			}
 
 			if int(idx) >= info.colors {
-				idx = byte(info.colors - 1)
+				idx = byte(info.colors - 1) //nolint:gosec // BMP palettes have at most 256 entries.
 			}
 
 			dstOff := (y*info.width + x) * rgbaChannels
@@ -576,7 +576,7 @@ func applyBMPMask(val, mask uint32) byte {
 	}
 	masked := (val & mask) >> shift
 	if bits == bmpBPP8 {
-		return byte(masked)
+		return byte(masked) //nolint:gosec // mask width is exactly one byte.
 	}
-	return byte((masked * bmpColorMax) / ((1 << bits) - 1))
+	return byte((masked * bmpColorMax) / ((1 << bits) - 1)) //nolint:gosec // scaled mask value is clamped to one byte.
 }

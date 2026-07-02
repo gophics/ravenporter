@@ -140,6 +140,56 @@ func TestIntegration_Model(t *testing.T) {
 			assert.Equal(t, [3]float32{0, 0, 0}, lo)
 			assert.Equal(t, [3]float32{9, 2, 0}, hi)
 		}},
+		{"GLTF2_DracoTriangle", corpus.IsoModelDracoGLTF, ir.FormatGLTF, func(t *testing.T, asset *ir.Asset) {
+			require.Len(t, asset.Meshes, 1)
+			require.Len(t, asset.Meshes[0].Primitives, 1)
+
+			prim := asset.Meshes[0].Primitives[0]
+			assert.Equal(t, ir.Triangles, prim.Mode)
+			assert.Equal(t, 0, prim.MaterialIndex)
+			assert.Equal(t, 3, prim.Data.VertexCount)
+			assert.Equal(t, []uint32{0, 1, 2}, prim.Data.Indices)
+			require.Len(t, prim.Data.Positions, 3)
+			require.Len(t, prim.Data.Normals, 3)
+			assert.Equal(t, [3]float32{1, 0, 0}, prim.Data.Positions[1])
+			assert.Equal(t, [3]float32{0, 0, 1}, prim.Data.Normals[0])
+
+			require.Len(t, asset.Materials, 1)
+			assert.Equal(t, "DracoMaterial", asset.Materials[0].Name)
+
+			lo, hi := asset.SceneBoundingBox(0)
+			assert.Equal(t, [3]float32{0, 0, 0}, lo)
+			assert.Equal(t, [3]float32{1, 1, 0}, hi)
+		}},
+		{"GLTF2_KhronosBoxDraco", corpus.ModelGLTF2KhronosBoxDraco, ir.FormatGLTF, func(t *testing.T, asset *ir.Asset) {
+			require.Len(t, asset.Meshes, 1)
+			require.Len(t, asset.Meshes[0].Primitives, 1)
+
+			prim := asset.Meshes[0].Primitives[0]
+			assert.Equal(t, ir.Triangles, prim.Mode)
+			assert.Equal(t, 24, prim.Data.VertexCount)
+			assert.Len(t, prim.Data.Positions, 24)
+			assert.Len(t, prim.Data.Normals, 24)
+			assert.Len(t, prim.Data.Indices, 36)
+
+			var maxAbsPos float32
+			for _, pos := range prim.Data.Positions {
+				for _, coord := range pos {
+					if coord < 0 {
+						coord = -coord
+					}
+					if coord > maxAbsPos {
+						maxAbsPos = coord
+					}
+				}
+			}
+			assert.InDelta(t, 0.5005, maxAbsPos, 0.002, "Khronos Draco box positions should decode from quantized payload")
+
+			for _, n := range prim.Data.Normals {
+				lengthSq := n[0]*n[0] + n[1]*n[1] + n[2]*n[2]
+				assert.InDelta(t, 1.0, lengthSq, 0.02, "Khronos Draco box normals should decode near unit length")
+			}
+		}},
 
 		// FBX
 		{"FBX_Box", corpus.ModelFBXBox, ir.FormatFBX, func(t *testing.T, asset *ir.Asset) {

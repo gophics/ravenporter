@@ -61,9 +61,9 @@ func fanTriangulate(dst []uint32, face []int32) []uint32 {
 	if len(face) < vecStride {
 		return dst
 	}
-	v0 := uint32(face[0]) //nolint:gosec // FBX indices are non-negative after XOR
+	v0 := uint32(face[0])
 	for i := 2; i < len(face); i++ {
-		dst = append(dst, v0, uint32(face[i-1]), uint32(face[i])) //nolint:gosec // bounded
+		dst = append(dst, v0, uint32(face[i-1]), uint32(face[i]))
 	}
 	return dst
 }

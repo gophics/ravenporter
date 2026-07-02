@@ -921,7 +921,7 @@ func wireDeferredBlendShapes(
 			raw := cr.readIntArray(f.valueRep)
 			mt.Indices = make([]uint32, len(raw))
 			for j, v := range raw {
-				mt.Indices[j] = uint32(v) //nolint:gosec // index fits uint32
+				mt.Indices[j] = uint32(v)
 			}
 		}
 		if f, found := cr.findFieldValue(bs.fields, tokBlendNormalOff); found {
@@ -1010,9 +1010,9 @@ func curvesToLineIndicesCrate(counts []int32) []uint32 {
 	for _, c := range counts {
 		n := int(c)
 		for i := 0; i < n-1; i++ {
-			indices = append(indices, offset+uint32(i), offset+uint32(i+1)) //nolint:gosec // bounded
+			indices = append(indices, offset+uint32(i), offset+uint32(i+1))
 		}
-		offset += uint32(c) //nolint:gosec // bounded
+		offset += uint32(c)
 	}
 	return indices
 }

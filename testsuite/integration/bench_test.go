@@ -44,6 +44,7 @@ func Benchmark_Memory_Allocations(b *testing.B) {
 
 		{"Model_OBJ", corpus.ModelOBJCube},
 		{"Model_GLTF2", corpus.ModelGLTF2BoxTextured},
+		{"Model_GLTF2_Draco", corpus.IsoModelDracoGLTF},
 		{"Model_FBX", corpus.ModelFBXBox},
 		{"Model_STL", corpus.ModelSTLBinary},
 		{"Model_PLY", corpus.ModelPLYCubeBinary},

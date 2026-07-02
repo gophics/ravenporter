@@ -148,9 +148,9 @@ func triangulateExpanded(polyIndices []int32) []uint32 {
 			faceLen := i - faceStart + 1
 			for j := 2; j < faceLen; j++ {
 				indices = append(indices,
-					uint32(faceStart),     //nolint:gosec // bounded
-					uint32(faceStart+j-1), //nolint:gosec // bounded
-					uint32(faceStart+j))   //nolint:gosec // bounded
+					uint32(faceStart),
+					uint32(faceStart+j-1),
+					uint32(faceStart+j))
 			}
 			faceStart = i + 1
 		}

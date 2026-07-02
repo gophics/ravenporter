@@ -509,8 +509,8 @@ func readVec2(dec *decoder) [2]float32 {
 }
 
 func writeVec3(enc *encoder, value [3]float32) {
-	for i := range value {
-		enc.f32(value[i])
+	for _, component := range value {
+		enc.f32(component)
 	}
 }
 
@@ -519,8 +519,8 @@ func readVec3(dec *decoder) [3]float32 {
 }
 
 func writeVec4(enc *encoder, value [4]float32) {
-	for i := range value {
-		enc.f32(value[i])
+	for _, component := range value {
+		enc.f32(component)
 	}
 }
 
@@ -529,15 +529,15 @@ func readVec4(dec *decoder) [4]float32 {
 }
 
 func writeMat4(enc *encoder, value [16]float32) {
-	for i := range value {
-		enc.f32(value[i])
+	for _, component := range value {
+		enc.f32(component)
 	}
 }
 
 func readMat4(dec *decoder) [16]float32 {
 	var value [16]float32
 	for i := range value {
-		value[i] = dec.f32()
+		value[i] = dec.f32() //nolint:gosec // i is produced by ranging over the fixed-size array.
 	}
 	return value
 }
@@ -610,8 +610,8 @@ func readColorSlice(dec *decoder) [][4]float32 {
 func writeJointSlice(enc *encoder, values [][4]uint16) {
 	enc.count(len(values))
 	for _, value := range values {
-		for i := range value {
-			enc.u16(value[i])
+		for _, component := range value {
+			enc.u16(component)
 		}
 	}
 }

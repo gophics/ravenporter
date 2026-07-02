@@ -64,14 +64,14 @@ func countUniqueBones(d *ir.MeshData) int {
 	var maxBone uint16
 	for _, j := range d.Joints0 {
 		for k := range vec4Stride {
-			if j[k] > maxBone { //nolint:gosec // k bounded by [4]uint16 array size
+			if j[k] > maxBone {
 				maxBone = j[k]
 			}
 		}
 	}
 	for _, j := range d.Joints1 {
 		for k := range vec4Stride {
-			if j[k] > maxBone { //nolint:gosec // k bounded by [4]uint16 array size
+			if j[k] > maxBone {
 				maxBone = j[k]
 			}
 		}
@@ -81,7 +81,7 @@ func countUniqueBones(d *ir.MeshData) int {
 	count := 0
 	for _, j := range d.Joints0 {
 		for k := range vec4Stride {
-			if !seen[j[k]] { //nolint:gosec // k bounded by [4]uint16 array size
+			if !seen[j[k]] {
 				seen[j[k]] = true
 				count++
 			}
@@ -89,7 +89,7 @@ func countUniqueBones(d *ir.MeshData) int {
 	}
 	for _, j := range d.Joints1 {
 		for k := range vec4Stride {
-			if !seen[j[k]] { //nolint:gosec // k bounded by [4]uint16 array size
+			if !seen[j[k]] {
 				seen[j[k]] = true
 				count++
 			}
@@ -304,10 +304,10 @@ func buildSplitPrimitiveFlat(
 				np.Data.Indices = append(np.Data.Indices, uint32(mapped))
 				continue
 			}
-			newIdx := int32(len(np.Data.Positions)) //nolint:gosec // bounded by vertex count
+			newIdx := int32(len(np.Data.Positions)) //nolint:gosec // chunk size is capped by MaxVerticesPerMesh.
 			remap[oldIdx] = newIdx
 			*remapUsed = append(*remapUsed, int(oldIdx))
-			np.Data.Indices = append(np.Data.Indices, uint32(newIdx)) //nolint:gosec // newIdx is always non-negative
+			np.Data.Indices = append(np.Data.Indices, uint32(newIdx))
 			oi := int(oldIdx)
 			np.Data.Positions = append(np.Data.Positions, src.Data.Positions[oi])
 			if np.Data.Normals != nil {

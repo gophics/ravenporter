@@ -50,14 +50,9 @@ func (d *doc) convertMesh(m *fastjson.Value) (*ir.Mesh, error) {
 }
 
 func (d *doc) convertPrimitive(p *fastjson.Value) (ir.Primitive, error) {
-	data, err := d.readAttributes(p)
+	data, mode, err := d.convertPrimitiveData(p)
 	if err != nil {
 		return ir.Primitive{}, err
-	}
-
-	if idxVal := p.Get(keyIndices); idxVal != nil {
-		a := d.getAccessor(idxVal.GetInt())
-		data.Indices = d.bufs.readIndices(a)
 	}
 
 	matIdx := ir.NoIndex
@@ -68,9 +63,36 @@ func (d *doc) convertPrimitive(p *fastjson.Value) (ir.Primitive, error) {
 	return ir.Primitive{
 		Data:          data,
 		MaterialIndex: matIdx,
-		Mode:          primitiveMode(p.GetInt(keyMode)),
+		Mode:          mode,
 		MorphTargets:  d.convertMorphTargets(p),
 	}, nil
+}
+
+func (d *doc) convertPrimitiveData(p *fastjson.Value) (ir.MeshData, ir.PrimitiveMode, error) {
+	if ext := p.Get(keyExtensions, keyKHRDracoComp); ext != nil {
+		dracoExt, err := parseDracoPrimitiveExt(ext)
+		if err != nil {
+			return ir.MeshData{}, 0, err
+		}
+		if err := validateDracoPrimitiveMode(p); err != nil {
+			return ir.MeshData{}, 0, err
+		}
+		data, err := d.convertDracoPrimitive(p, dracoExt)
+		if err != nil {
+			return ir.MeshData{}, 0, err
+		}
+		return data, ir.Triangles, nil
+	}
+
+	data, err := d.readAttributes(p)
+	if err != nil {
+		return ir.MeshData{}, 0, err
+	}
+	if idxVal := p.Get(keyIndices); idxVal != nil {
+		a := d.getAccessor(idxVal.GetInt())
+		data.Indices = d.bufs.readIndices(a)
+	}
+	return data, primitiveMode(p.GetInt(keyMode)), nil
 }
 
 func (d *doc) parsePerPrimitiveVariants(asset *ir.Asset) {
@@ -104,6 +126,10 @@ func (d *doc) parsePerPrimitiveVariants(asset *ir.Asset) {
 }
 
 func (d *doc) readAttributes(p *fastjson.Value) (ir.MeshData, error) {
+	return d.readAttributesFiltered(p, dracoAttributeSet{})
+}
+
+func (d *doc) readAttributesFiltered(p *fastjson.Value, skip dracoAttributeSet) (ir.MeshData, error) {
 	attrs := p.Get(keyAttributes)
 	if attrs == nil {
 		return ir.MeshData{}, nil
@@ -111,7 +137,7 @@ func (d *doc) readAttributes(p *fastjson.Value) (ir.MeshData, error) {
 
 	var data ir.MeshData
 
-	if v := attrs.Get(attrPosition); v != nil {
+	if v := attrs.Get(attrPosition); v != nil && !skip.has(attrPosition) {
 		a := d.getAccessor(v.GetInt())
 		if d.opts.MaxVertices > 0 && a.count > d.opts.MaxVertices {
 			return ir.MeshData{}, decutil.DecodeErr(ir.FormatGLTF, "vertex limit exceeded", nil)
@@ -119,37 +145,37 @@ func (d *doc) readAttributes(p *fastjson.Value) (ir.MeshData, error) {
 		data.Positions = d.bufs.readVec3s(a)
 		data.VertexCount = len(data.Positions)
 	}
-	if v := attrs.Get(attrNormal); v != nil {
+	if v := attrs.Get(attrNormal); v != nil && !skip.has(attrNormal) {
 		data.Normals = d.bufs.readVec3s(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrTangent); v != nil {
+	if v := attrs.Get(attrTangent); v != nil && !skip.has(attrTangent) {
 		data.Tangents = d.bufs.readVec4s(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrTexCoord0); v != nil {
+	if v := attrs.Get(attrTexCoord0); v != nil && !skip.has(attrTexCoord0) {
 		data.TexCoord0 = d.bufs.readVec2s(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrTexCoord1); v != nil {
+	if v := attrs.Get(attrTexCoord1); v != nil && !skip.has(attrTexCoord1) {
 		data.TexCoord1 = d.bufs.readVec2s(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrTexCoord2); v != nil {
+	if v := attrs.Get(attrTexCoord2); v != nil && !skip.has(attrTexCoord2) {
 		data.TexCoord2 = d.bufs.readVec2s(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrTexCoord3); v != nil {
+	if v := attrs.Get(attrTexCoord3); v != nil && !skip.has(attrTexCoord3) {
 		data.TexCoord3 = d.bufs.readVec2s(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrColor0); v != nil {
+	if v := attrs.Get(attrColor0); v != nil && !skip.has(attrColor0) {
 		data.Colors0 = d.bufs.readColors(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrJoints0); v != nil {
+	if v := attrs.Get(attrJoints0); v != nil && !skip.has(attrJoints0) {
 		data.Joints0 = d.bufs.readJoints(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrJoints1); v != nil {
+	if v := attrs.Get(attrJoints1); v != nil && !skip.has(attrJoints1) {
 		data.Joints1 = d.bufs.readJoints(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrWeights0); v != nil {
+	if v := attrs.Get(attrWeights0); v != nil && !skip.has(attrWeights0) {
 		data.Weights0 = d.bufs.readVec4s(d.getAccessor(v.GetInt()))
 	}
-	if v := attrs.Get(attrWeights1); v != nil {
+	if v := attrs.Get(attrWeights1); v != nil && !skip.has(attrWeights1) {
 		data.Weights1 = d.bufs.readVec4s(d.getAccessor(v.GetInt()))
 	}
 

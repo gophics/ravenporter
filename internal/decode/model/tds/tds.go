@@ -214,7 +214,7 @@ func parseTriMesh(name string, data []byte, ctx *parseCtx) {
 			if len(body) >= matrixFloats*u32Size {
 				rawMatrix := body[:matrixFloats*u32Size]
 				for i := range matrixFloats {
-					localMatrix[i] = binread.ReadF32LE(rawMatrix[i*u32Size:]) //nolint:gosec // bounded by matrixFloats
+					localMatrix[i] = binread.ReadF32LE(rawMatrix[i*u32Size:])
 				}
 				hasMatrix = true
 			}

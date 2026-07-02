@@ -195,7 +195,7 @@ func computeNormalsFromSmoothing(
 			}
 		}
 
-		length := acc[0]*acc[0] + acc[1]*acc[1] + acc[2]*acc[2] //nolint:gosec // fixed [3]float32 array
+		length := acc[0]*acc[0] + acc[1]*acc[1] + acc[2]*acc[2]
 		if length > 0 {
 			inv := 1.0 / float32(math.Sqrt(float64(length)))
 			acc[0] *= inv

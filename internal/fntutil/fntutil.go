@@ -1,6 +1,8 @@
 package fntutil
 
 import (
+	"unicode/utf8"
+
 	"github.com/gophics/ravenporter/internal/binread"
 	"github.com/gophics/ravenporter/ir"
 )
@@ -19,6 +21,7 @@ const (
 	headUnitsPerEmOff  = 18
 	maxpNumGlyphsOff   = 4
 	hheaNumHMetricsOff = 34
+	base128MaxBytes    = 5
 
 	nameRecordOff  = 6
 	nameRecordSize = 12
@@ -254,7 +257,7 @@ func parseCmapFmt4(data []byte) []rune {
 			break
 		}
 		for c := startCode; c <= endCode; c++ {
-			codepoints = append(codepoints, rune(c))
+			codepoints = append(codepoints, rune(c)) //nolint:gosec // cmap format 4 codepoints are uint16 range.
 		}
 	}
 	return codepoints
@@ -274,7 +277,10 @@ func parseCmapFmt12(data []byte) []rune {
 		startCode := binread.ReadU32BE(data[off:])
 		endCode := binread.ReadU32BE(data[off+4:])
 		for c := startCode; c <= endCode; c++ {
-			codepoints = append(codepoints, rune(c))
+			if c > utf8.MaxRune {
+				break
+			}
+			codepoints = append(codepoints, rune(c)) //nolint:gosec // bounded by utf8.MaxRune above.
 		}
 	}
 	return codepoints
@@ -386,11 +392,7 @@ func CleanString(b []byte) string {
 
 // ReadBase128 decodes a UIntBase128 value per the WOFF2 spec.
 func ReadBase128(data []byte) (val uint32, consumed int) {
-	for i := range 5 {
-		if i >= len(data) {
-			return 0, 0
-		}
-		b := data[i]
+	for i, b := range data[:min(len(data), base128MaxBytes)] {
 		if i == 0 && b == 0x80 {
 			return 0, 0
 		}

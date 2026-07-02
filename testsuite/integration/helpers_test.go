@@ -20,7 +20,9 @@ import (
 func corpusDir(t testing.TB, subpath string) string {
 	t.Helper()
 	root := filepath.Join("..")
-	if strings.HasPrefix(subpath, "isolation/") || strings.HasPrefix(subpath, "rejection/") {
+	if strings.HasPrefix(subpath, "isolation/") ||
+		strings.HasPrefix(subpath, "rejection/") ||
+		strings.HasPrefix(subpath, "third_party/") {
 		return filepath.Join(root, "corpus")
 	}
 	dir := filepath.Join(root, "testdata", "source", "assimp")

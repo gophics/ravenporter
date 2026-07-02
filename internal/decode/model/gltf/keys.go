@@ -151,6 +151,7 @@ const (
 	keyEXTTextureWebP      = "EXT_texture_webp"
 	keyEXTMeshGPUInst      = "EXT_mesh_gpu_instancing"
 	keyEXTMeshoptComp      = "EXT_meshopt_compression"
+	keyKHRDracoComp        = "KHR_draco_mesh_compression"
 	keyIDs                 = "ids"
 	keyVariants            = "variants"
 	keyMappings            = "mappings"

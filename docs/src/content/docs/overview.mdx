@@ -121,6 +121,6 @@ If you want the design rationale behind those choices, see [Why RavenPorter](../
 
 - The public API stays centered on the root package instead of exposing internal pipeline packages directly.
 - The JSON emitter is for inspection and tooling handoff, not for final runtime packaging.
-- `KHR_draco_mesh_compression` is not supported in the current glTF importer and therefore unavailable in cooked runtime assets too.
+- Draco- and meshopt-compressed glTF meshes are decoded during import before optional runtime cache cooking.
 
 For the design tradeoffs, continue with [Why RavenPorter](../why-ravenporter/). For code first, go to [Quick Start](../quick-start/). If the representation matters most, open [IR Overview](../ir-overview/).

@@ -9,7 +9,7 @@ It loads source assets into a single runtime-oriented IR, [`ir.Asset`](./ir/asse
 
 ## Requirements
 
-- Go `1.25.7` or newer
+- Go `1.25.11` or newer
 - Node.js `22.12.0` or newer if you want to build the docs site
 
 ## What It Is Good At
@@ -304,6 +304,6 @@ Use:
 RavenPorter-authored source code in this repository is licensed under the
 Apache License, Version 2.0. See [`LICENSE`](./LICENSE).
 
-## Unsupported
+## glTF Compression Support
 
-- `KHR_draco_mesh_compression` remains intentionally unsupported.
+- `KHR_draco_mesh_compression` and `EXT_meshopt_compression` are decoded during glTF/GLB import.

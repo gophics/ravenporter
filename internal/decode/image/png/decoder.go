@@ -1,7 +1,9 @@
+//revive:disable-next-line:var-naming Package name matches the decoded image format.
 package png
 
 import (
 	"bytes"
+	"encoding/binary"
 	"hash/crc32"
 	"image"
 	"image/draw"
@@ -40,10 +42,6 @@ const (
 	pngAcTLMinSize = 8
 	pngFcTLMinSize = 26
 	pngFdATSeqOver = 4
-
-	shift24 = 24
-	shift16 = 16
-	shift8  = 8
 )
 
 var magicPNG = []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
@@ -228,15 +226,8 @@ func buildFrameBlob(ihdrPayload []byte, headers, idats [][]byte, w, h int) []byt
 
 	synthIHDR := append([]byte(nil), ihdrPayload...)
 
-	synthIHDR[0] = byte(w >> shift24)
-	synthIHDR[1] = byte(w >> shift16)
-	synthIHDR[2] = byte(w >> shift8)
-	synthIHDR[3] = byte(w)
-
-	synthIHDR[4] = byte(h >> shift24)
-	synthIHDR[5] = byte(h >> shift16)
-	synthIHDR[6] = byte(h >> shift8)
-	synthIHDR[7] = byte(h)
+	putPNGUint32(synthIHDR[0:], w)
+	putPNGUint32(synthIHDR[4:], h)
 
 	out = append(out, buildChunk(chunkTypeIHDR, synthIHDR)...)
 
@@ -256,10 +247,7 @@ func buildChunk(chunkType string, data []byte) []byte {
 	length := len(data)
 	buf := make([]byte, pngChunkOverhead+length)
 
-	buf[0] = byte(length >> shift24)
-	buf[1] = byte(length >> shift16)
-	buf[2] = byte(length >> shift8)
-	buf[3] = byte(length)
+	putPNGUint32(buf, length)
 
 	copy(buf[pngChunkLenSize:], chunkType)
 	if length > 0 {
@@ -268,12 +256,13 @@ func buildChunk(chunkType string, data []byte) []byte {
 
 	crc := crc32.ChecksumIEEE(buf[pngChunkLenSize : pngChunkLenSize+pngChunkTypeSize+length])
 
-	buf[pngChunkLenSize+pngChunkTypeSize+length] = byte(crc >> shift24)
-	buf[pngChunkLenSize+pngChunkTypeSize+length+1] = byte(crc >> shift16)
-	buf[pngChunkLenSize+pngChunkTypeSize+length+2] = byte(crc >> shift8)
-	buf[pngChunkLenSize+pngChunkTypeSize+length+3] = byte(crc)
+	binary.BigEndian.PutUint32(buf[pngChunkLenSize+pngChunkTypeSize+length:], crc)
 
 	return buf
+}
+
+func putPNGUint32(dst []byte, value int) {
+	binary.BigEndian.PutUint32(dst, uint32(value)) //nolint:gosec // PNG dimensions/chunk lengths are prevalidated.
 }
 
 func pngDimensions(data []byte) (w, h int) {

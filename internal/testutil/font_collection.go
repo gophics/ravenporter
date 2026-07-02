@@ -8,7 +8,6 @@ const (
 	fontCollectionVersion    = 1 << 16
 	sfntHeaderMinSize        = 12
 	sfntTableEntrySize       = 16
-	uint32ByteLen            = 4
 	uint32Shift              = 8
 )
 
@@ -55,15 +54,12 @@ func putUint32BEInt(dst []byte, v int) {
 	if v < 0 || uint64(v) > uint64(^uint32(0)) {
 		panic("uint32 overflow")
 	}
-	for i := range uint32ByteLen {
-		dst[uint32ByteLen-1-i] = byte(v)
-		v >>= uint32Shift
-	}
+	binary.BigEndian.PutUint32(dst, uint32(v))
 }
 
 func readUint32BEInt(src []byte) int {
 	v := 0
-	for i := range uint32ByteLen {
+	for i := range 4 {
 		v = (v << uint32Shift) | int(src[i])
 	}
 	return v

@@ -2,6 +2,7 @@ package webp
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"image"
 	"image/color"
@@ -290,9 +291,10 @@ func buildRIFFChunk(chunkType string, payload []byte) []byte {
 }
 
 func appendU32LE(dst []byte, v uint32) []byte {
-	return append(dst, byte(v), byte(v>>webpShift8), byte(v>>webpShift16), byte(v>>webpShift24))
+	return binary.LittleEndian.AppendUint32(dst, v)
 }
 
+//nolint:gosec // WebP stores this field as a 24-bit little-endian integer.
 func writeU24LE(dst []byte, v int) {
 	dst[0] = byte(v)
 	dst[1] = byte(v >> webpShift8)

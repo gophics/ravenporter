@@ -1,3 +1,4 @@
+//revive:disable-next-line:var-naming Package name matches the decoded image format.
 package jpeg
 
 import (

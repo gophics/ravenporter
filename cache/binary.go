@@ -71,6 +71,7 @@ func (e *encoder) u64(value uint64) {
 	e.data = binary.LittleEndian.AppendUint64(e.data, value)
 }
 
+//nolint:gosec // cache format stores signed integers as raw little-endian bytes.
 func (e *encoder) i32(value int32) {
 	if e.err != nil {
 		return
@@ -83,6 +84,7 @@ func (e *encoder) i32(value int32) {
 	)
 }
 
+//nolint:gosec // cache format stores signed integers as raw little-endian bytes.
 func (e *encoder) i64(value int64) {
 	if e.err != nil {
 		return
@@ -357,7 +359,7 @@ func toUint32(value int) (uint32, error) {
 	if value < 0 || uint64(value) > math.MaxUint32 {
 		return 0, fmtErrorf("cache: count %d exceeds uint32", value)
 	}
-	return uint32(value), nil //nolint:gosec // range validated above
+	return uint32(value), nil
 }
 
 func toInt32(value int) (int32, error) {

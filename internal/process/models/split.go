@@ -108,7 +108,7 @@ func splitPrimitive(p *ir.Primitive, limit int) []ir.Primitive {
 			i2 = p.Data.Indices[idx+2]
 		} else {
 			const idxOffset = 2
-			i0 = uint32(t * vertsPerTri) //nolint:gosec // t fits in uint32 bounds here
+			i0 = uint32(t * vertsPerTri)
 			i1 = i0 + 1
 			i2 = i0 + idxOffset
 		}

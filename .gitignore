@@ -59,6 +59,7 @@ Desktop.ini
 /.gomodcache/
 /.golangci-cache/
 /.golangci-lint-cache/
+/graphify-out/
 /node_modules/
 /.agent/
 

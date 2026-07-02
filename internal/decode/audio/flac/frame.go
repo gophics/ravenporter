@@ -51,7 +51,7 @@ const (
 	bitBufWidth = 64
 	msbBit      = 63
 
-	// Frame header field widths (FLAC format spec §frame_header).
+	// Frame header field widths (FLAC format spec frame_header).
 	bitsSync      = 14
 	bitBlockSize  = 4
 	bitSampleRate = 4
@@ -472,7 +472,7 @@ func (fd *frameDecoder) decodeLPCInto(br *bitReader, dst []int32, bps, order int
 		for i := order; i < blockSize; i++ {
 			var predicted int64
 			for j := range order {
-				predicted += int64(coeffs[j]) * int64(dst[i-1-j]) //nolint:gosec
+				predicted += int64(coeffs[j]) * int64(dst[i-1-j])
 			}
 			dst[i] = applyLPCShift(predicted, shift) + resid[i-order]
 		}

@@ -38,9 +38,9 @@ func TestCheckRequiredExtensions(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Unsupported Draco",
+			name:    "Supported Draco",
 			json:    `{"asset": {"version": "2.0"}, "extensionsRequired": ["KHR_draco_mesh_compression"]}`,
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name:    "Completely unknown",

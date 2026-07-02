@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	draco "github.com/gophics/go-draco"
 	"github.com/gophics/ravenporter/detect"
 	"github.com/gophics/ravenporter/internal/decutil"
 	"github.com/gophics/ravenporter/ir"
@@ -72,10 +73,12 @@ func parseGLB(data []byte) (glbData, error) {
 }
 
 type doc struct {
-	root  *fastjson.Value
-	bufs  bufferSet
-	extFS detect.SeekableFS
-	opts  detect.DecodeOptions
+	root          *fastjson.Value
+	bufs          bufferSet
+	extFS         detect.SeekableFS
+	opts          detect.DecodeOptions
+	dracoDec      *draco.Decoder
+	dracoReported bool
 }
 
 const gltfReportedBy = "decode:model/gltf"
@@ -273,6 +276,7 @@ var supportedExtensions = map[string]bool{ //nolint:gochecknoglobals // extensio
 	"EXT_mesh_gpu_instancing":             true,
 	"EXT_meshopt_compression":             true,
 	"EXT_texture_webp":                    true,
+	"KHR_draco_mesh_compression":          true,
 	"KHR_lights_punctual":                 true,
 	"KHR_mesh_quantization":               true,
 	"KHR_texture_basisu":                  true,
@@ -300,9 +304,6 @@ func (d *doc) checkRequiredExtensions() error {
 	arr := d.root.GetArray(keyExtensionsRequired)
 	for _, ext := range arr {
 		name := decutil.Bstr(ext.GetStringBytes())
-		if name == extDraco {
-			return decutil.DecodeErr(ir.FormatID(gltfName), "KHR_draco_mesh_compression is required but not supported", nil)
-		}
 		if !supportedExtensions[name] {
 			return decutil.DecodeErr(ir.FormatID(gltfName), "unsupported required extension: "+name, nil)
 		}

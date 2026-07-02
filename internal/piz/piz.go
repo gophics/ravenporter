@@ -105,8 +105,8 @@ func buildLookupTables(bitmap []byte) (fwd, rev []uint16, size int) {
 	k := 0
 	for i := range maxBitmapSize {
 		if bitmap[i] != 0 {
-			fwd[i] = uint16(k) //nolint:gosec // k < maxBitmapSize (65536)
-			rev[k] = uint16(i) //nolint:gosec // i < maxBitmapSize (65536)
+			fwd[i] = uint16(k)
+			rev[k] = uint16(i)
 			k++
 		}
 	}
@@ -138,7 +138,7 @@ func decodeHuffData(src []byte, nBits int, out, fwd []uint16) {
 			break
 		}
 		byteIdx := bitPos / bitsPerByte
-		bitOff := uint(bitPos % bitsPerByte) //nolint:gosec // bitPos always >= 0
+		bitOff := uint(bitPos % bitsPerByte)
 		if byteIdx+halfSize <= len(src) {
 			raw := uint32(src[byteIdx]) | uint32(src[byteIdx+1])<<bitsPerByte
 			if byteIdx+halfSize < len(src) {
